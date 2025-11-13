@@ -26,6 +26,7 @@ using UnityEngine.XR.ARSubsystems;
 using UnityEngine.XR.Management;
 using UnityEngine.XR.OpenXR;
 using UnityEngine.XR.OpenXR.API;
+using RealityLog.Common;
 
 namespace RealityLog.Depth
 {

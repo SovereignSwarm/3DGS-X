@@ -2,8 +2,12 @@
 
 using UnityEngine;
 
-namespace RealityLog.Depth
+namespace RealityLog.Common
 {
+    /// <summary>
+    /// Describes a depth frame's metadata (pose, FOV, timestamp, etc.)
+    /// Shared between Depth and IO layers to avoid circular dependencies.
+    /// </summary>
     public struct DepthFrameDesc
     {
         public long timestampNs;

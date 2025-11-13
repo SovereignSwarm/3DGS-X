@@ -90,17 +90,6 @@ namespace RealityLog.Camera
                 SessionManagerJavaInstance.Call(REGISTER_SURFACE_PROVIDER_METHOD_NAME, providerJavaInstance);
             }
             SessionManagerJavaInstance.Call(SET_CAPTURE_TEMPLATE_METHOD_NAME, useCase.ToString());
-            
-            // Try to set target FPS range if the method exists
-            try
-            {
-                SessionManagerJavaInstance.Call("setTargetFpsRange", 3, 3);
-                Debug.Log($"[{Constants.LOG_TAG}] Set camera FPS to 3");
-            }
-            catch (AndroidJavaException e)
-            {
-                Debug.LogWarning($"[{Constants.LOG_TAG}] setTargetFpsRange not available: {e.Message}");
-            }
 
             using (AndroidJavaClass unityPlayerClazz = new AndroidJavaClass(Constants.UNITY_PLAYER_CLASS_NAME))
             using (AndroidJavaObject currentActivity = unityPlayerClazz.GetStatic<AndroidJavaObject>(Constants.UNITY_PLAYER_CURRENT_ACTIVITY_VARIABLE_NAME))

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
+using RealityLog.Common;
 
 namespace RealityLog.IO
 {
@@ -19,6 +20,11 @@ namespace RealityLog.IO
         private bool isDisposed = false;
 
         private readonly object bufferPoolLock = new();
+        
+        // Event fired when depth data is ready (after AsyncGPUReadback completes)
+        // Fires separately for each eye (eyeIndex: 0=left, 1=right)
+        // Parameters: (depthData, width, height, eyeIndex, frameDescriptor)
+        public event Action<NativeArray<float>, int, int, int, DepthFrameDesc>? OnDepthDataReady;
 
         public DepthRenderTextureExporter(ComputeShader computeShader)
         {
@@ -26,7 +32,7 @@ namespace RealityLog.IO
             kernel = this.computeShader.FindKernel("CopyRT");
         }
 
-        public void Export(RenderTexture sourceRT, string leftDepthOutputPath, string rightDepthOutputPath)
+        public void Export(RenderTexture sourceRT, string leftDepthOutputPath, string rightDepthOutputPath, DepthFrameDesc[] frameDescriptors)
         {
             if (isDisposed)
             {
@@ -43,6 +49,10 @@ namespace RealityLog.IO
             var width = sourceRT.width;
             var height = sourceRT.height;
             var pixelCount = width * height;
+            
+            // Each eye is half the total width
+            int eyeWidth = width / 2;
+            int eyeHeight = height;
 
             GraphicsBuffer leftEyeBuffer = GetOrCreateBuffer(pixelCount);
             GraphicsBuffer rightEyeBuffer = GetOrCreateBuffer(pixelCount);
@@ -57,8 +67,8 @@ namespace RealityLog.IO
             int groupsY = Mathf.CeilToInt(height / 8f);
             computeShader.Dispatch(kernel, groupsX, groupsY, 1);
 
-            RequestGPUReadbackAndSave(leftEyeBuffer, leftDepthOutputPath);
-            RequestGPUReadbackAndSave(rightEyeBuffer, rightDepthOutputPath);
+            RequestGPUReadbackAndSave(leftEyeBuffer, leftDepthOutputPath, eyeWidth, eyeHeight, 0, frameDescriptors[0]);
+            RequestGPUReadbackAndSave(rightEyeBuffer, rightDepthOutputPath, eyeWidth, eyeHeight, 1, frameDescriptors[1]);
         }
 
         public void Dispose()
@@ -116,7 +126,7 @@ namespace RealityLog.IO
             }
         }
 
-        private void RequestGPUReadbackAndSave(GraphicsBuffer buffer, string outputPath)
+        private void RequestGPUReadbackAndSave(GraphicsBuffer buffer, string outputPath, int width, int height, int eyeIndex, DepthFrameDesc frameDescriptor)
         {
             AsyncGPUReadback.Request(buffer, request =>
             {
@@ -128,8 +138,19 @@ namespace RealityLog.IO
                 }
 
                 var data = request.GetData<float>();
-
                 SaveAsRaw(data, outputPath, () => ReturnBuffer(buffer));
+                
+                // Fire event for visualization/processing (with frame descriptor)
+                // Subscribers can process the data while it's still valid
+                try
+                {
+                    OnDepthDataReady?.Invoke(data, width, height, eyeIndex, frameDescriptor);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"Error in OnDepthDataReady handler: {ex}");
+                }
+
             });
         }
 

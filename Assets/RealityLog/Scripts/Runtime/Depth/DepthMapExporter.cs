@@ -6,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Android;
 using RealityLog.Common;
 using RealityLog.IO;
+using Unity.Collections;
 
 namespace RealityLog.Depth
 {
@@ -33,6 +34,13 @@ namespace RealityLog.Depth
         [SerializeField] private CaptureTimer captureTimer = default!;
 
         private DepthDataExtractor? depthDataExtractor;
+        
+        // Event fired when a depth frame is captured (for visualization, etc.)
+        public event Action<DepthFrameDesc[], RenderTexture, Transform>? OnDepthFrameCaptured;
+        
+        // Event fired when depth data is ready from AsyncGPUReadback (1-2 frames later)
+        // Fires separately for each eye. Parameters: (depthData, width, height, eyeIndex, frameDescriptor)
+        public event Action<Unity.Collections.NativeArray<float>, int, int, int, DepthFrameDesc>? OnDepthDataReady;
 
         private DepthRenderTextureExporter? renderTextureExporter;
         private CsvWriter? leftDepthCsvWriter;
@@ -91,6 +99,12 @@ namespace RealityLog.Depth
 
             depthDataExtractor = new();
             renderTextureExporter = new(copyDepthMapShader);
+            
+            // Forward depth data ready event to external subscribers
+            renderTextureExporter.OnDepthDataReady += (NativeArray<float> data, int width, int height, int eyeIndex, DepthFrameDesc frameDescriptor) =>
+            {
+                OnDepthDataReady?.Invoke(data, width, height, eyeIndex, frameDescriptor);
+            };
 
             Permission.RequestUserPermission(OVRPermissionsRequester.ScenePermission);
 
@@ -189,7 +203,7 @@ namespace RealityLog.Depth
                 var leftDepthFilePath = Path.Join(Application.persistentDataPath, DirectoryName, $"{leftDepthMapDirectoryName}/{unixTime}.raw");
                 var rightDepthFilePath = Path.Join(Application.persistentDataPath, DirectoryName, $"{rightDepthMapDirectoryName}/{unixTime}.raw");
 
-                renderTextureExporter.Export(renderTexture, leftDepthFilePath, rightDepthFilePath);
+                renderTextureExporter.Export(renderTexture, leftDepthFilePath, rightDepthFilePath, frameDescriptors);
 
                 for (var i = 0; i < FRAME_DESC_COUNT; ++i)
                 {
@@ -219,6 +233,9 @@ namespace RealityLog.Depth
                         rightDepthCsvWriter?.EnqueueRow(row);
                     }
                 }
+                
+                // Fire event for any listeners (e.g., coverage visualization)
+                OnDepthFrameCaptured?.Invoke(frameDescriptors, renderTexture, Camera.main.transform);
             } else {
                 Debug.LogError("Failed to get updated depth texture.");
             }
