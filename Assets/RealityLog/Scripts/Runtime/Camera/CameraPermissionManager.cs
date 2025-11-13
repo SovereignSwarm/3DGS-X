@@ -3,6 +3,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using RealityLog.Common;
 
 namespace RealityLog.Camera
 {

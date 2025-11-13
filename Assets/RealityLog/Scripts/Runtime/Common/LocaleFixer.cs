@@ -1,7 +1,7 @@
 using System.Globalization;
 using UnityEngine;
 
-namespace RealityLog.IO
+namespace RealityLog.Common
 {
     public class LocaleFixer : MonoBehaviour
     {

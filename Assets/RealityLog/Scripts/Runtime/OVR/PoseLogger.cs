@@ -3,6 +3,8 @@
 using System;
 using System.IO;
 using UnityEngine;
+using RealityLog.Common;
+using RealityLog.IO;
 
 namespace RealityLog.OVR
 {
@@ -12,7 +14,7 @@ namespace RealityLog.OVR
         Raw
     }
 
-    class PoseLogger : MonoBehaviour
+    public class PoseLogger : MonoBehaviour
     {
         private static readonly string[] HEADER = new string[]
             {
@@ -47,6 +49,15 @@ namespace RealityLog.OVR
             try
             {
                 StopLogging();
+                
+                // Reset base times when starting a new recording session
+                // This ensures timestamps align with camera/depth that also reset on session start
+                baseOvrTimeSec = OVRPlugin.GetTimeInSeconds();
+                baseUnixTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                latestTimestamp = 0;
+                
+                Debug.Log($"[{Constants.LOG_TAG}] {fileName} - Reset base times: OVR={baseOvrTimeSec:F3}s, Unix={baseUnixTimeMs}ms");
+                
                 var filePath = Path.Combine(Application.persistentDataPath, DirectoryName, fileName);
                 writer = new CsvWriter(filePath, HEADER);
             }

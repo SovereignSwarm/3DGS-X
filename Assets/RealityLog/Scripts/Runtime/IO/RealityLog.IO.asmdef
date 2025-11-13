@@ -1,11 +1,7 @@
 {
-    "name": "RealityLog.OVR",
-    "rootNamespace": "RealityLog.OVR",
-    "references": [
-        "GUID:e144d031c3c40ef4d960edaa656bd4ca",
-        "GUID:da3029612d6475548bc412c4e03987e1",
-        "GUID:f64c9ebcd7899c3448a08dc9f9ddbe30"
-    ],
+    "name": "RealityLog.IO",
+    "rootNamespace": "RealityLog.IO",
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
@@ -16,3 +12,4 @@
     "versionDefines": [],
     "noEngineReferences": false
 }
+

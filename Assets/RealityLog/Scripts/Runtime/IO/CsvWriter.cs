@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace RealityLog
+namespace RealityLog.IO
 {
     public class CsvWriter : IDisposable
     {

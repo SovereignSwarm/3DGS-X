@@ -4,10 +4,12 @@ using System;
 using System.IO;
 using UnityEngine;
 using UnityEngine.Android;
+using RealityLog.Common;
+using RealityLog.IO;
 
 namespace RealityLog.Depth
 {
-    class DepthMapExporter : MonoBehaviour
+    public class DepthMapExporter : MonoBehaviour
     {
         private static readonly string[] descriptorHeader = new[]
             {
@@ -26,6 +28,9 @@ namespace RealityLog.Depth
         [SerializeField] private string rightDepthMapDirectoryName = "right_depth";
         [SerializeField] private string leftDepthDescFileName = "left_depth_descriptors.csv";
         [SerializeField] private string rightDepthDescFileName = "right_depth_descriptors.csv";
+        [Header("Synchronized Capture")]
+        [Tooltip("Required: Reference to CaptureTimer for FPS-based capture timing.")]
+        [SerializeField] private CaptureTimer captureTimer = default!;
 
         private DepthDataExtractor? depthDataExtractor;
 
@@ -36,8 +41,10 @@ namespace RealityLog.Depth
         private double baseOvrTimeSec;
         private long baseUnixTimeMs;
 
-        private bool isExporting = false;
         private bool hasScenePermission = false;
+        private bool depthSystemReady = false;
+
+        public bool IsDepthSystemReady => depthSystemReady;
 
         public string DirectoryName
         {
@@ -47,33 +54,34 @@ namespace RealityLog.Depth
 
         public void StartExport()
         {
-            isExporting = true;
-
             leftDepthCsvWriter?.Dispose();
             rightDepthCsvWriter?.Dispose();
+
+            // Reset base times when starting a new recording session
+            // This ensures timestamps align with camera/pose data
+            baseOvrTimeSec = OVRPlugin.GetTimeInSeconds();
+            baseUnixTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            
+            Debug.Log($"[{Constants.LOG_TAG}] DepthMapExporter - Reset base times: OVR={baseOvrTimeSec:F3}s, Unix={baseUnixTimeMs}ms");
 
             leftDepthCsvWriter = new(Path.Join(Application.persistentDataPath, DirectoryName, leftDepthDescFileName), descriptorHeader);
             rightDepthCsvWriter = new(Path.Join(Application.persistentDataPath, DirectoryName, rightDepthDescFileName), descriptorHeader);
 
             Directory.CreateDirectory(Path.Join(Application.persistentDataPath, DirectoryName, leftDepthMapDirectoryName));
             Directory.CreateDirectory(Path.Join(Application.persistentDataPath, DirectoryName, rightDepthMapDirectoryName));
-
-            if (hasScenePermission)
-            {
-                depthDataExtractor?.SetDepthEnabled(true);
-            }
         }
 
         public void StopExport()
         {
-            isExporting = false;
+            // Note: Timer stop is handled by RecordingManager
+            // Just cleanup our resources here
 
             leftDepthCsvWriter?.Dispose();
             leftDepthCsvWriter = null;
             rightDepthCsvWriter?.Dispose();
             rightDepthCsvWriter = null;
 
-            depthDataExtractor?.SetDepthEnabled(false);
+            // Note: We keep depth enabled to avoid re-initialization overhead on next recording
         }
 
         private void Start()
@@ -86,11 +94,35 @@ namespace RealityLog.Depth
 
             Permission.RequestUserPermission(OVRPermissionsRequester.ScenePermission);
 
+            // Enable depth system at app start so it's ready when user starts recording
+            depthDataExtractor?.SetDepthEnabled(true);
+            Debug.Log($"[{Constants.LOG_TAG}] DepthMapExporter - Depth system enabled at startup, waiting for first frame...");
+
             Application.onBeforeRender += OnBeforeRender;
+        }
+
+        private void Update()
+        {
+            // Try to "prime" the depth system by fetching one frame at startup
+            // Once we get a valid frame, mark the system as ready and stop trying
+            if (!depthSystemReady && depthDataExtractor != null)
+            {
+                if (depthDataExtractor.TryGetUpdatedDepthTexture(out var renderTexture, out var frameDescriptors))
+                {
+                    if (renderTexture != null && renderTexture.IsCreated())
+                    {
+                        depthSystemReady = true;
+                        Debug.Log($"[{Constants.LOG_TAG}] DepthMapExporter - Depth system warmed up and ready!");
+                    }
+                }
+            }
         }
 
         private void OnDestroy()
         {
+            // Clean up depth system
+            depthDataExtractor?.SetDepthEnabled(false);
+            
             renderTextureExporter?.Dispose();
             renderTextureExporter = null;
 
@@ -99,12 +131,22 @@ namespace RealityLog.Depth
 
         private void OnBeforeRender()
         {
-            if (!isExporting ||
-                renderTextureExporter == null || depthDataExtractor == null
+            // Early exit if resources not ready
+            if (renderTextureExporter == null || depthDataExtractor == null
                 || leftDepthCsvWriter == null || rightDepthCsvWriter == null)
             {
                 return;
             }
+
+            // Check if timer says we should capture this frame
+            // Timer handles FPS timing internally
+            if (!captureTimer.IsCapturing || !captureTimer.ShouldCaptureThisFrame)
+            {
+                return;
+            }
+            
+            // Debug: Log when we're about to capture
+            Debug.Log($"[DepthExporter] Capturing depth at Unity time={Time.unscaledTime:F3}s");
 
             if (!hasScenePermission)
             {
@@ -112,7 +154,7 @@ namespace RealityLog.Depth
 
                 if (hasScenePermission)
                 {
-                    depthDataExtractor.SetDepthEnabled(isExporting);
+                    depthDataExtractor.SetDepthEnabled(true);
                 }
                 else
                 {
@@ -122,6 +164,9 @@ namespace RealityLog.Depth
 
             if (depthDataExtractor.TryGetUpdatedDepthTexture(out var renderTexture, out var frameDescriptors))
             {
+                // Depth system is ready (we already warmed it up in Update())
+                // Just capture the frame data
+
                 const int FRAME_DESC_COUNT = 2;
 
                 if (renderTexture == null || !renderTexture.IsCreated())
@@ -174,6 +219,8 @@ namespace RealityLog.Depth
                         rightDepthCsvWriter?.EnqueueRow(row);
                     }
                 }
+            } else {
+                Debug.LogError("Failed to get updated depth texture.");
             }
         }
 

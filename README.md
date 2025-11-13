@@ -30,6 +30,8 @@ This includes:
 * Captures **YUV passthrough images** from **both left and right cameras**
 * Logs **Camera2 API characteristics** and image format information
 * Saves **depth maps** and **depth descriptors** from both cameras
+* **Synchronized capture** with configurable frame rate for depth and camera images (default: 3 FPS)
+* **Perfect timestamp alignment** between camera images and depth maps
 * Automatically organizes logs into timestamped folders on internal storage
 
 ---
@@ -147,6 +149,8 @@ To convert raw depth maps into linear or 3D form, refer to the companion project
 
 ## 🚀 Installation & Usage
 
+### For End Users
+
 1. Download the APK from [GitHub Releases](https://github.com/t-34400/QuestRealityCapture/releases)
 2. Install with ADB:
 
@@ -159,6 +163,21 @@ To convert raw depth maps into linear or 3D form, refer to the companion project
 
 Required permissions (camera/scene access) are requested automatically at runtime.
 
+### For Developers
+
+To customize the capture frame rate or set up synchronized capture:
+
+1. Open the project in Unity **6000.0.30f1**
+2. Open the scene: `Assets/RealityLog/Scenes/RealityLogScene.unity`
+3. Set up the **CaptureCoordinator** component:
+   - Create a GameObject with the `CaptureCoordinator` component
+   - Set the **Target Capture FPS** (default: 3 FPS)
+   - Wire up references in `DepthMapExporter` and `ImageReaderSurfaceProvider` components
+4. Connect coordinator lifecycle to recording start/stop events
+5. Build and deploy to your Quest device
+
+See [docs/FPS_CONTROL.md](docs/FPS_CONTROL.md) for detailed setup and configuration instructions.
+
 ---
 
 ## 🛠 Environment
@@ -166,7 +185,8 @@ Required permissions (camera/scene access) are requested automatically at runtim
 * Unity **6000.0.30f1**
 * Meta OpenXR SDK
 * Device: Meta Quest 3 or 3s only
-* Approx. recording frame rate: \~25 FPS (camera & depth)
+* Default capture frame rate: **3 FPS** (configurable, max \~25 FPS)
+  - See [docs/FPS_CONTROL.md](docs/FPS_CONTROL.md) for customization options
 
 ---
 

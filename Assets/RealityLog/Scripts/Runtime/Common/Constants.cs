@@ -1,6 +1,6 @@
 # nullable enable
 
-namespace RealityLog
+namespace RealityLog.Common
 {
     public static class Constants
     {

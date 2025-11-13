@@ -8,7 +8,7 @@ using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace RealityLog
+namespace RealityLog.IO
 {
     public class DepthRenderTextureExporter : IDisposable
     {
