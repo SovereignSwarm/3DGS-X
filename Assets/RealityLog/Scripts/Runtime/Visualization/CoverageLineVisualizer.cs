@@ -42,9 +42,7 @@ namespace RealityLog.Visualization
         private ParticleSystem.EmitParams emitParams = new();
         private ParticleSystemRenderer? particleRenderer;
         private bool isInitialized = false;
-        
-        // Store camera position when OnDepthFrameCaptured fires, use when OnDepthDataReady arrives
-        private Vector3 pendingCameraPos;
+        private OVRCameraRig? ovrCameraRig;
         
         public bool IsEnabled
         {
@@ -61,20 +59,18 @@ namespace RealityLog.Visualization
         
         private void OnEnable()
         {
-            // Subscribe to depth frame events
+            // Subscribe to depth data ready event
             if (depthMapExporter != null)
             {
-                depthMapExporter.OnDepthFrameCaptured += OnDepthFrameCaptured;
                 depthMapExporter.OnDepthDataReady += OnDepthDataReady;
             }
         }
         
         private void OnDisable()
         {
-            // Unsubscribe from depth frame events
+            // Unsubscribe from depth data ready event
             if (depthMapExporter != null)
             {
-                depthMapExporter.OnDepthFrameCaptured -= OnDepthFrameCaptured;
                 depthMapExporter.OnDepthDataReady -= OnDepthDataReady;
             }
         }
@@ -116,8 +112,26 @@ namespace RealityLog.Visualization
             var main = coverageParticleSystem.main;
             main.startLifetime = lineLifetime;
             
+            // CRITICAL: Ensure simulation space is World, not Local
+            if (main.simulationSpace != ParticleSystemSimulationSpace.World)
+            {
+                Debug.LogWarning($"[{Constants.LOG_TAG}] CoverageLineVisualizer: Particle simulation space is {main.simulationSpace}, changing to World!");
+                main.simulationSpace = ParticleSystemSimulationSpace.World;
+            }
+            
             // Update stretch scale from inspector setting  
             particleRenderer.lengthScale = lineLength * 20f;
+            
+            // Find OVRCameraRig for accurate camera position tracking
+            ovrCameraRig = FindObjectOfType<OVRCameraRig>();
+            if (ovrCameraRig == null)
+            {
+                Debug.LogWarning($"[{Constants.LOG_TAG}] OVRCameraRig not found in scene. Camera position may be incorrect.");
+            }
+            else
+            {
+                Debug.Log($"[{Constants.LOG_TAG}] Found OVRCameraRig, will use centerEyeAnchor for camera position.");
+            }
             
             // Start the particle system
             if (!coverageParticleSystem.isPlaying)
@@ -128,8 +142,26 @@ namespace RealityLog.Visualization
             isInitialized = true;
             Debug.Log($"[{Constants.LOG_TAG}] CoverageLineVisualizer initialized successfully");
             
-            // TEST: Emit some test particles to verify rendering works
-            // TODO: Remove after testing!
+            // Delay test particle emission to allow VR tracking to initialize
+            StartCoroutine(EmitTestParticlesDelayed());
+        }
+        
+        private System.Collections.IEnumerator EmitTestParticlesDelayed()
+        {
+            // Wait for VR tracking to initialize (usually takes 1-2 frames)
+            yield return new WaitForSeconds(0.5f);
+            
+            // Verify tracking is ready
+            if (ovrCameraRig != null && ovrCameraRig.centerEyeAnchor != null)
+            {
+                Vector3 pos = ovrCameraRig.centerEyeAnchor.position;
+                if (pos.magnitude < 0.01f)
+                {
+                    Debug.LogWarning($"[{Constants.LOG_TAG}] Tracking still at origin after delay, waiting longer...");
+                    yield return new WaitForSeconds(1.0f);
+                }
+            }
+            
             EmitTestParticles();
         }
         
@@ -142,9 +174,29 @@ namespace RealityLog.Visualization
             Debug.Log($"[{Constants.LOG_TAG}] Emitting test particles...");
             Debug.Log($"[{Constants.LOG_TAG}] Particle system alive count BEFORE: {coverageParticleSystem.particleCount}");
             
-            // Emit particles in a circle pattern in front of the camera
-            Transform camTransform = Camera.main.transform;
-            Vector3 centerPos = camTransform.position + camTransform.forward * 2f; // 2m in front
+            // Get camera position from OVRCameraRig if available
+            Vector3 cameraWorldPos;
+            Vector3 cameraForward;
+            
+            if (ovrCameraRig != null && ovrCameraRig.centerEyeAnchor != null)
+            {
+                cameraWorldPos = ovrCameraRig.centerEyeAnchor.position;
+                cameraForward = ovrCameraRig.centerEyeAnchor.forward;
+                Debug.Log($"[{Constants.LOG_TAG}] Using OVRCameraRig.centerEyeAnchor position");
+            }
+            else
+            {
+                Debug.LogError($"[{Constants.LOG_TAG}] No OVRCameraRig available!");
+                return;
+            }
+            
+            Vector3 centerPos = cameraWorldPos + cameraForward * 2f; // 2m in front
+            
+            Debug.Log($"[{Constants.LOG_TAG}] TEST PARTICLES DEBUG:");
+            Debug.Log($"[{Constants.LOG_TAG}]   Camera world position = {cameraWorldPos}");
+            Debug.Log($"[{Constants.LOG_TAG}]   Camera forward = {cameraForward}");
+            Debug.Log($"[{Constants.LOG_TAG}]   Camera rotation (euler) = {ovrCameraRig.centerEyeAnchor.rotation.eulerAngles}");
+            Debug.Log($"[{Constants.LOG_TAG}]   Center position (2m in front) = {centerPos}");
             
             for (int i = 0; i < 12; i++)
             {
@@ -154,7 +206,7 @@ namespace RealityLog.Visualization
                 
                 // Different color per particle
                 Color color = Color.HSVToRGB(i / 12f, 1f, 1f);
-                Vector3 direction = (camTransform.position - worldPos).normalized;
+                Vector3 direction = (cameraWorldPos - worldPos).normalized;
                 
                 Debug.Log($"[{Constants.LOG_TAG}] Emitting particle {i} at {worldPos} with color {color}");
                 EmitCoverageLine(worldPos, direction, color);
@@ -165,30 +217,22 @@ namespace RealityLog.Visualization
         }
         
         /// <summary>
-        /// Event handler called when a depth frame is captured.
-        /// Stores camera position for when depth data arrives via OnDepthDataReady (1-2 frames later).
-        /// Frame descriptors are passed through AsyncGPUReadback to avoid race conditions.
+        /// Converts reversed logarithmic NDC depth to linear depth in meters.
+        /// For infinite far plane: linear_depth = (-2 * near) / (ndc - 1)
         /// </summary>
-        /// <param name="depthFrameDescs">Depth frame descriptors (not used, passed via OnDepthDataReady)</param>
-        /// <param name="depthTexture">Depth render texture (not used, data comes via OnDepthDataReady)</param>
-        /// <param name="cameraTransform">Camera transform at time of capture</param>
-        private void OnDepthFrameCaptured(
-            DepthFrameDesc[] depthFrameDescs, 
-            RenderTexture depthTexture,
-            Transform cameraTransform)
+        private float ConvertNDCToLinear(float depthNDC, float nearZ)
         {
-            if (!isEnabled || !isInitialized) return;
-            
-            // Store camera position for when depth data arrives (async, 1-2 frames later)
-            // Note: Frame descriptors are passed through the AsyncGPUReadback callback
-            pendingCameraPos = cameraTransform.position;
+            float ndc = depthNDC * 2.0f - 1.0f;
+            float denom = ndc + (-1.0f);
+            if (Mathf.Abs(denom) < 0.0001f) return float.PositiveInfinity;
+            return (-2.0f * nearZ) / denom;
         }
         
         /// <summary>
         /// Event handler called when depth data is ready from AsyncGPUReadback.
         /// Processes the depth data and emits coverage line particles.
         /// </summary>
-        /// <param name="depthData">Depth values in meters (row-major order)</param>
+        /// <param name="depthData">Depth values in reversed logarithmic NDC format (row-major order)</param>
         /// <param name="width">Width of the depth image for this eye</param>
         /// <param name="height">Height of the depth image for this eye</param>
         /// <param name="eyeIndex">Eye index (0=left, 1=right)</param>
@@ -197,10 +241,42 @@ namespace RealityLog.Visualization
         {
             if (!isEnabled || !isInitialized) return;
             
-            Vector3 cameraPos = pendingCameraPos;
+            // Use the depth camera's actual position at capture time (from frame descriptor)
+            // This is more accurate than pendingCameraPos which is the Unity camera from 1-2 frames ago
+            Vector3 cameraPos = frameDesc.createPoseLocation;
             
             int particlesEmitted = 0;
             int validDepthSamples = 0;
+            bool firstSample = true;
+            // if (eyeIndex == 1) return;
+            
+            // Sample depth at different locations to check for variation
+            int centerIdx = (height/2) * width + (width/2);
+            int topLeftIdx = 0;
+            int bottomRightIdx = depthData.Length - 1;
+            
+            // Find min/max manually (avoid LINQ overhead) - convert from NDC to linear
+            float minDepthLinear = float.MaxValue;
+            float maxDepthLinear = float.MinValue;
+            for (int i = 0; i < depthData.Length; i++)
+            {
+                float depthNDC = depthData[i];
+                float ndc = depthNDC * 2.0f - 1.0f;
+                float denom = ndc + (-1.0f);
+                if (Mathf.Abs(denom) < 0.0001f) continue;
+                float linearDepth = (-2.0f * frameDesc.nearZ) / denom;
+                
+                if (linearDepth < minDepthLinear) minDepthLinear = linearDepth;
+                if (linearDepth > maxDepthLinear) maxDepthLinear = linearDepth;
+            }
+            
+            // Convert sample points to linear for logging
+            float centerDepthLinear = ConvertNDCToLinear(depthData[centerIdx], frameDesc.nearZ);
+            float topLeftDepthLinear = ConvertNDCToLinear(depthData[topLeftIdx], frameDesc.nearZ);
+            float bottomRightDepthLinear = ConvertNDCToLinear(depthData[bottomRightIdx], frameDesc.nearZ);
+            
+            Debug.Log($"[{Constants.LOG_TAG}] Depth samples (LINEAR) - Center: {centerDepthLinear:F3}m, TopLeft: {topLeftDepthLinear:F3}m, BottomRight: {bottomRightDepthLinear:F3}m, Min: {minDepthLinear:F3}m, Max: {maxDepthLinear:F3}m");
+            Debug.Log($"[{Constants.LOG_TAG}] Near/Far planes: nearZ={frameDesc.nearZ:F3}m, farZ={frameDesc.farZ:F3}m");
             
             // Downsample for performance
             for (int y = 0; y < height; y += downsampleFactor)
@@ -213,16 +289,36 @@ namespace RealityLog.Visualization
                     if (index >= depthData.Length)
                         continue;
                     
-                    float depth = depthData[index];
+                    float depthNDC = depthData[index];
+                    
+                    // Convert from reversed logarithmic NDC to linear depth
+                    // For near=0.1, far=Infinity: x=-0.2, y=-1.0
+                    // linear_depth = x / (ndc + y) where ndc = d * 2.0 - 1.0
+                    float ndc = depthNDC * 2.0f - 1.0f;
+                    float denom = ndc + (-1.0f);
+                    if (Mathf.Abs(denom) < 0.0001f) continue; // Avoid division by zero
+                    float depth = (-2.0f * frameDesc.nearZ) / denom;
                     
                     // Skip invalid depth values
-                    if (depth < 0.1f || depth > 10f)
+                    if (depth < 0.1f || depth > 3.0f)
                         continue;
                     
                     validDepthSamples++;
                     
                     // Unproject pixel to 3D world space
                     Vector3 worldPos = UnprojectDepthPixel(x, y, width, height, frameDesc, depth);
+                    
+                    // Debug first few samples
+                    if (firstSample && eyeIndex == 0)
+                    {
+                        Debug.Log($"[{Constants.LOG_TAG}] Sample pixel ({x},{y}) depthNDC={depthNDC:F3} → linearDepth={depth:F3}m");
+                        Debug.Log($"[{Constants.LOG_TAG}]   Frame pose: pos={frameDesc.createPoseLocation} rot={frameDesc.createPoseRotation.eulerAngles}");
+                        Debug.Log($"[{Constants.LOG_TAG}]   FOV tangents: L={frameDesc.fovLeftAngleTangent:F3} R={frameDesc.fovRightAngleTangent:F3} T={frameDesc.fovTopAngleTangent:F3} D={frameDesc.fovDownAngleTangent:F3}");
+                        Debug.Log($"[{Constants.LOG_TAG}]   Unprojected worldPos={worldPos}");
+                        Debug.Log($"[{Constants.LOG_TAG}]   Depth camera position={cameraPos}");
+                        Debug.Log($"[{Constants.LOG_TAG}]   Distance from camera={Vector3.Distance(worldPos, cameraPos):F3}m");
+                        firstSample = false;
+                    }
                     
                     // Check if valid point
                     float distance = Vector3.Distance(worldPos, cameraPos);
@@ -250,28 +346,56 @@ namespace RealityLog.Visualization
         /// </summary>
         private Vector3 UnprojectDepthPixel(int x, int y, int width, int height, DepthFrameDesc frameDesc, float depth)
         {
-            // Normalize pixel coordinates to [0, 1]
-            float u = (float)x / width;
-            float v = (float)y / height;
+            // Compute camera intrinsics from FOV tangents
+            // FOV tangents are magnitudes, we apply signs for camera space directions
+            float left = frameDesc.fovLeftAngleTangent;
+            float right = frameDesc.fovRightAngleTangent;
+            float top = frameDesc.fovTopAngleTangent;
+            float down = frameDesc.fovDownAngleTangent;
             
-            // Interpolate FOV tangents based on pixel position
-            // These tangents define the frustum of the depth camera
-            float tanX = Mathf.Lerp(frameDesc.fovLeftAngleTangent, frameDesc.fovRightAngleTangent, u);
-            float tanY = Mathf.Lerp(frameDesc.fovDownAngleTangent, frameDesc.fovTopAngleTangent, v);
+            // Focal lengths and principal point for asymmetric FOV
+            float fx = width / (right + left);
+            float fy = height / (top + down);
+            float cx = width * right / (right + left);
+            float cy = height * top / (top + down);
             
-            // Unproject to camera-local space
-            // The FOV tangents directly give us the direction, scaled by depth
-            Vector3 localPos = new Vector3(
-                tanX * depth,
-                -tanY * depth,  // Flip Y (texture coords are top-down, world is bottom-up)
-                depth
-            );
+            // Pixel coordinates (with 0.5 offset for pixel centers)
+            float px = x + 0.5f;
+            float py = y + 0.5f;
+            
+            // The compute shader flips V: v = height - y - 1
+            // Undo this flip
+            py = height - py;
+            
+            // Compute tangents using pinhole camera model
+            // Depth camera space: X=right, Y=down, Z=forward
+            float tanX = (px - cx) / fx;  // Positive right, negative left
+            float tanY = (py - cy) / fy;  // Positive down, negative up
+            
+            // Construct ray direction in depth camera space
+            // Depth camera space: X=right, Y=down, Z=forward
+            // Ray direction from camera origin to 3D point
+            Vector3 rayDir = new Vector3(tanX, tanY, 1.0f);
+            
+            // Normalize and scale by depth to get the actual 3D position
+            Vector3 localPos = rayDir.normalized * depth;
             
             // Transform to world space using frame descriptor pose
             Quaternion rotation = frameDesc.createPoseRotation;
             Vector3 position = frameDesc.createPoseLocation;
             
             Vector3 worldPos = position + rotation * localPos;
+            
+            // Debug logging for first sample
+            if (x == 0 && y == 0)
+            {
+                Debug.Log($"[{Constants.LOG_TAG}] Unproject debug: px={px:F1}, py={py:F1}, tanX={tanX:F3}, tanY={tanY:F3}");
+                Debug.Log($"[{Constants.LOG_TAG}]   Intrinsics: fx={fx:F1}, fy={fy:F1}, cx={cx:F1}, cy={cy:F1}");
+                Debug.Log($"[{Constants.LOG_TAG}]   rayDir={rayDir}, normalized={rayDir.normalized}");
+                Debug.Log($"[{Constants.LOG_TAG}]   localPos={localPos}");
+                Debug.Log($"[{Constants.LOG_TAG}]   rotation={rotation.eulerAngles}, position={position}");
+                Debug.Log($"[{Constants.LOG_TAG}]   worldPos={worldPos}");
+            }
             
             return worldPos;
         }
@@ -286,13 +410,10 @@ namespace RealityLog.Visualization
             emitParams.ResetVelocity();
             
             emitParams.position = position;
-            emitParams.velocity = direction * 0.00001f; // Tiny velocity in the direction (stretch uses this)
+            emitParams.velocity = Vector3.zero; // No velocity for sphere meshes
             emitParams.startColor = color;
-            emitParams.startSize = lineLength; // Use actual line length
+            emitParams.startSize = 0.005f; // 0.5cm spheres for visibility
             emitParams.startLifetime = lineLifetime;
-            
-            // Orient line to point in viewing direction (for stretched billboards)
-            emitParams.rotation3D = Quaternion.LookRotation(direction).eulerAngles;
             
             coverageParticleSystem.Emit(emitParams, 1);
         }
