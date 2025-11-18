@@ -2,6 +2,7 @@
 
 using System;
 using UnityEngine;
+using UnityEngine.Events;
 using RealityLog.Camera;
 using RealityLog.Common;
 using RealityLog.Depth;
@@ -31,9 +32,21 @@ namespace RealityLog
         [Header("Recording Settings")]
         [SerializeField] private bool generateTimestampedDirectories = true;
 
+        [Header("Events")]
+        [Tooltip("Invoked when recording stops and files are saved. Passes the directory name where files were saved.")]
+        [SerializeField] private UnityEvent<string> onRecordingSaved = default!;
+
         private bool isRecording = false;
+        private float recordingStartTime = 0f;
+        private string? currentSessionDirectory = null;
 
         public bool IsRecording => isRecording;
+        
+        /// <summary>
+        /// Gets the elapsed recording time in seconds.
+        /// Returns 0 if not currently recording.
+        /// </summary>
+        public float RecordingDuration => isRecording ? Time.time - recordingStartTime : 0f;
 
         /// <summary>
         /// Starts recording from all subsystems in the proper order.
@@ -50,6 +63,7 @@ namespace RealityLog
             if (generateTimestampedDirectories)
             {
                 var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+                currentSessionDirectory = timestamp;
                 depthMapExporter.DirectoryName = timestamp;
                 foreach (var provider in cameraProviders)
                 {
@@ -60,8 +74,12 @@ namespace RealityLog
                     logger.DirectoryName = timestamp;
                 }
             }
+            else
+            {
+                currentSessionDirectory = depthMapExporter.DirectoryName;
+            }
 
-            Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Starting recording session '{depthMapExporter.DirectoryName}'");
+            Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Starting recording session '{currentSessionDirectory}'");
 
             // Step 1: Update camera paths for new session
             // This ensures format info and images are written to the new directory
@@ -91,6 +109,7 @@ namespace RealityLog
             captureTimer.StartCapture();
 
             isRecording = true;
+            recordingStartTime = Time.time;
 
             Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Recording started successfully");
         }
@@ -119,9 +138,20 @@ namespace RealityLog
                 logger.StopLogging();
             }
 
-            isRecording = false;
+            // Store directory name before resetting state
+            string savedDirectory = currentSessionDirectory ?? string.Empty;
 
-            Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Recording stopped successfully");
+            isRecording = false;
+            recordingStartTime = 0f;
+            currentSessionDirectory = null;
+
+            // Invoke event after files are saved
+            if (!string.IsNullOrEmpty(savedDirectory))
+            {
+                onRecordingSaved?.Invoke(savedDirectory);
+            }
+
+            Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Recording stopped successfully. Files saved to '{savedDirectory}'");
         }
 
         /// <summary>
