@@ -1,0 +1,17 @@
+{
+    "name": "RealityLog.FileOperations",
+    "rootNamespace": "RealityLog.FileOperations",
+    "references": [
+        "GUID:e144d031c3c40ef4d960edaa656bd4ca"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
+
