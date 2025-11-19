@@ -130,7 +130,7 @@ GameObject:
   - component: {fileID: 476427106}
   - component: {fileID: 476427105}
   - component: {fileID: 476427104}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Status Text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -146,7 +146,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 53066915}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Sliding Area
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -592,7 +592,7 @@ GameObject:
   - component: {fileID: 274303677}
   - component: {fileID: 274303676}
   - component: {fileID: 274303675}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Scrollbar Horizontal
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -718,7 +718,7 @@ GameObject:
   - component: {fileID: 1546513619}
   - component: {fileID: 1546513618}
   - component: {fileID: 1546513621}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: RecordingMenuPanel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -897,7 +897,7 @@ GameObject:
   - component: {fileID: 444668024}
   - component: {fileID: 444668026}
   - component: {fileID: 444668025}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Content
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1710,7 +1710,7 @@ GameObject:
   - component: {fileID: 730769978}
   - component: {fileID: 730769977}
   - component: {fileID: 730769976}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Surface
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2445,7 +2445,7 @@ GameObject:
   - component: {fileID: 1094490349}
   - component: {fileID: 1094490351}
   - component: {fileID: 1094490350}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Handle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2772,7 +2772,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1179731421}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: GameObject
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2887,7 +2887,7 @@ GameObject:
   - component: {fileID: 1305493030}
   - component: {fileID: 487324549}
   - component: {fileID: 487324548}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Handle
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3061,7 +3061,7 @@ GameObject:
   - component: {fileID: 1409508093}
   - component: {fileID: 1409508092}
   - component: {fileID: 1409508091}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Viewport
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3148,7 +3148,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1420402250}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Sliding Area
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3187,7 +3187,7 @@ GameObject:
   - component: {fileID: 1546513624}
   - component: {fileID: 1546513623}
   - component: {fileID: 1546513622}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: ISDK_RayInteraction
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3361,7 +3361,7 @@ GameObject:
   - component: {fileID: 730769973}
   - component: {fileID: 730769972}
   - component: {fileID: 1550360848}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: RecordingManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3396,7 +3396,7 @@ GameObject:
   - component: {fileID: 1886528250}
   - component: {fileID: 1886528249}
   - component: {fileID: 1886528248}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Scrollbar Vertical
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3548,7 +3548,7 @@ GameObject:
   - component: {fileID: 1910341594}
   - component: {fileID: 1910341593}
   - component: {fileID: 1910341592}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Scroll View
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3658,8 +3658,7 @@ GameObject:
   - component: {fileID: 1929108982}
   - component: {fileID: 1929108981}
   - component: {fileID: 1929108984}
-  - component: {fileID: 1929108985}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: RecordingMenuCanvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3767,34 +3766,6 @@ MonoBehaviour:
   distance: 1
   heightOffset: -0.2
   lookAtCamera: 1
---- !u!114 &1929108985
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1929108974}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ee10491ef6d5d1d49a270cf6b09bdc19, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Oculus.VR::OVROverlayCanvas
-  _enableMipmapping: 0
-  _dynamicResolution: 1
-  _redrawResolutionThreshold: 2147483647
-  rectTransform: {fileID: 1929108975}
-  maxTextureSize: 2048
-  manualRedraw: 0
-  renderInterval: 1
-  renderIntervalFrameOffset: 0
-  expensive: 0
-  layer: 0
-  opacity: 2
-  shape: 0
-  curveRadius: 1
-  overlapMask: 0
-  overlayType: 2
-  _overlayEnabled: 1
 --- !u!1 &1942360062
 GameObject:
   m_ObjectHideFlags: 0
