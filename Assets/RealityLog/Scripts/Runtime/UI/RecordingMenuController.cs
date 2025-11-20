@@ -28,6 +28,7 @@ namespace RealityLog.UI
         private bool isMenuVisible = false;
 
         private CanvasGroup? menuCanvasGroup;
+        private RecordingListManager? listManager;
 
         private void Start()
         {
@@ -42,6 +43,8 @@ namespace RealityLog.UI
                 // Initialize state (hidden)
                 UpdateMenuVisibility();
             }
+
+            listManager = GetComponent<RecordingListManager>();
         }
 
         private void Update()
@@ -61,6 +64,10 @@ namespace RealityLog.UI
             
             if (menuPanel != null)
             {
+                if (listManager != null)
+                {
+                    listManager.RefreshRecordings();
+                }
                 UpdateMenuVisibility();
                 
                 if (isMenuVisible)
