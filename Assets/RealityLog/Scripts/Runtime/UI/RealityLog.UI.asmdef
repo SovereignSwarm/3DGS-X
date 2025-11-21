@@ -1,11 +1,12 @@
 {
-    "name": "RealityLog",
-    "rootNamespace": "RealityLog",
+    "name": "RealityLog.UI",
+    "rootNamespace": "RealityLog.UI",
     "references": [
+        "GUID:d0444c2808025b94fa59a06393315ebd",
         "GUID:e144d031c3c40ef4d960edaa656bd4ca",
-        "GUID:da3029612d6475548bc412c4e03987e1",
-        "GUID:b35a35a357e7d5d4bad5811dcd5b45c4",
-        "GUID:301df01616fa31d4dab4a979c0bccd8a"
+        "GUID:6055be8ebefd69e48b49212b09b47b2f",
+        "GUID:5a3f1bc592f12e5438ac3468bd134cd0",
+        "GUID:f64c9ebcd7899c3448a08dc9f9ddbe30"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
