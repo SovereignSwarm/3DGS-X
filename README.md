@@ -13,7 +13,7 @@
 `QuestRealityCapture` is a Unity-based data logging app for Meta Quest 3. It captures and stores synchronized real-world information such as headset and controller poses, images from both passthrough cameras, camera characteristics, and depth data, organized per session.
 
 For **data parsing, visualization, and reconstruction**, refer to the companion project:
-**[Meta Quest 3D Reconstruction](https://github.com/t-34400/metaquest-3d-reconstrucion)**
+**[Meta Quest 3D Reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)**
 
 This includes:
 
@@ -36,29 +36,7 @@ This includes:
 
 ---
 
-## 📢 NOTICE (v1.1.0)
 
-Starting with version **1.1.0**, the **camera pose values** stored in `left_camera_characteristics.json` and `right_camera_characteristics.json` are now saved as **raw pose values directly obtained from the Android Camera2 API**.
-
-### Migration Guide for Older Logs (v1.0.x and earlier)
-
-In versions **prior to 1.1.0**, the camera poses were preprocessed into Unity coordinate space. To convert these older poses to match the new raw format convention, apply the following transformation:
-
-* **Translation (position)**:
-
-  ```
-  (x, y, z) → (x, y, -z)
-  ```
-
-* **Rotation (quaternion)**:
-
-  ```
-  (x, y, z, w) → (-x, -y, z, w)
-  ```
-
-This conversion aligns the preprocessed Unity pose with the raw Android pose representation now used in version 1.1.0 and later.
-
----
 
 ## 🧾 Data Structure
 
@@ -127,7 +105,7 @@ Example structure:
 - Raw YUV frames are stored as `.yuv` files under `left_camera_raw/` and `right_camera_raw/`.
 - Image format and buffer information are provided in the accompanying `*_camera_image_format.json` files.
 
-To convert passthrough YUV (YUV_420_888) images to RGB for visualization or reconstruction, see: [Meta Quest 3D Reconstruction](https://github.com/t-34400/metaquest-3d-reconstrucion)
+To convert passthrough YUV (YUV_420_888) images to RGB for visualization or reconstruction, see: [Meta Quest 3D Reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)
 
 ### Depth Map Descriptor CSV
 
@@ -143,7 +121,7 @@ To convert passthrough YUV (YUV_420_888) images to RGB for visualization or reco
 
 * Raw `.float32` depth images (1D float per pixel)
 
-To convert raw depth maps into linear or 3D form, refer to the companion project: [Meta Quest 3D Reconstruction](https://github.com/t-34400/metaquest-3d-reconstrucion)
+To convert raw depth maps into linear or 3D form, refer to the companion project: [Meta Quest 3D Reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)
 
 ---
 
@@ -157,26 +135,65 @@ To convert raw depth maps into linear or 3D form, refer to the companion project
    ```bash
    adb install QuestRealityCapture.apk
    ```
-3. Launch the app on **Meta Quest 3 or 3s** (firmware **v74+** required)
-4. When the green instruction panel appears, press the **menu button on the left controller** to dismiss it and start logging
-5. Data will be saved under the session folder as described above
+## 🎮 Usage
 
-Required permissions (camera/scene access) are requested automatically at runtime.
+### Recording & Management
 
-### For Developers
+1. **Start/Stop Recording**: 
+   - Launch the app.
+   - Press the **Menu button** on the left controller to dismiss the instruction panel and start logging.
+   - To stop, simply close the app or pause the session.
 
-To customize the capture frame rate or set up synchronized capture:
+2. **Manage Recordings (New!)**:
+   - Press the **Y button** on the left controller to toggle the **Recording Menu**.
+   - This menu allows you to:
+     - **View** a list of all recorded sessions.
+     - **Export** sessions to a zip file (saved to `.../files/Export/`).
+     - **Delete** unwanted sessions to free up space.
 
-1. Open the project in Unity **6000.0.30f1**
-2. Open the scene: `Assets/RealityLog/Scenes/RealityLogScene.unity`
-3. Set up the **CaptureCoordinator** component:
-   - Create a GameObject with the `CaptureCoordinator` component
-   - Set the **Target Capture FPS** (default: 3 FPS)
-   - Wire up references in `DepthMapExporter` and `ImageReaderSurfaceProvider` components
-4. Connect coordinator lifecycle to recording start/stop events
-5. Build and deploy to your Quest device
+> [!NOTE]
+> The capture frame rate is set to **3 FPS** by default to balance performance and data quality for reconstruction.
 
-See [docs/FPS_CONTROL.md](docs/FPS_CONTROL.md) for detailed setup and configuration instructions.
+---
+
+## ☁️ Cloud Processing (Recommended)
+
+For the easiest workflow, you can upload your exported `.zip` files directly to our cloud processing service:
+
+**[vid2scene.com/upload/quest](https://vid2scene.com/upload/quest)**
+
+This service will automatically process your data and generate a 3D reconstruction.
+
+---
+
+## 💻 Local Processing & Reconstruction
+
+If you prefer to process data locally, this project includes a submodule **[quest-3d-reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)** with powerful Python scripts.
+
+### Setup
+
+Ensure you have the submodule initialized:
+
+```bash
+git submodule update --init --recursive
+```
+
+### End-to-End Pipeline
+
+The `e2e_quest_to_colmap.py` script provides a one-step solution to convert your Quest data into a COLMAP-compatible format.
+
+**Usage Example:**
+
+```bash
+python quest-3d-reconstruction/scripts/e2e_quest_to_colmap.py \
+  --project_dir /path/to/extracted/session/folder \
+  --output_dir /path/to/output/colmap/project
+```
+
+**What this script does:**
+1. **Converts YUV images** to RGB.
+2. **Reconstructs the 3D scene** (point cloud).
+3. **Exports** everything (images, cameras, points) to a COLMAP sparse model.
 
 ---
 
@@ -185,8 +202,17 @@ See [docs/FPS_CONTROL.md](docs/FPS_CONTROL.md) for detailed setup and configurat
 * Unity **6000.0.30f1**
 * Meta OpenXR SDK
 * Device: Meta Quest 3 or 3s only
-* Default capture frame rate: **3 FPS** (configurable, max \~25 FPS)
+* Default capture frame rate: **3 FPS** (configurable, max ~25 FPS)
   - See [docs/FPS_CONTROL.md](docs/FPS_CONTROL.md) for customization options
+
+---
+
+## 🙏 Acknowledgements
+
+This project is a fork of **[QuestRealityCapture](https://github.com/t-34400/QuestRealityCapture)** by **[t-34400](https://github.com/t-34400)**.
+The 3D reconstruction submodule is based on **[metaquest-3d-reconstrucion](https://github.com/samuelm2/quest-3d-reconstruction)**.
+
+Huge thanks to the original author for their excellent work in making Quest sensor data accessible!
 
 ---
 
