@@ -94,10 +94,7 @@ namespace RealityLog.Depth
 
             Permission.RequestUserPermission(OVRPermissionsRequester.ScenePermission);
 
-            // Enable depth system at app start so it's ready when user starts recording
-            depthDataExtractor?.SetDepthEnabled(true);
-            Debug.Log($"[{Constants.LOG_TAG}] DepthMapExporter - Depth system enabled at startup, waiting for first frame...");
-
+            // Note: We do NOT enable depth here anymore. We wait for permission in Update().
             Application.onBeforeRender += OnBeforeRender;
         }
 
@@ -107,6 +104,17 @@ namespace RealityLog.Depth
             // Once we get a valid frame, mark the system as ready and stop trying
             if (!depthSystemReady && depthDataExtractor != null)
             {
+                // Check for permission first
+                if (!hasScenePermission)
+                {
+                    hasScenePermission = Permission.HasUserAuthorizedPermission(OVRPermissionsRequester.ScenePermission);
+                    if (!hasScenePermission) return; // Wait for permission
+                    
+                    // Permission granted, enable depth
+                    depthDataExtractor.SetDepthEnabled(true);
+                    Debug.Log($"[{Constants.LOG_TAG}] DepthMapExporter - Scene permission granted, enabling depth system...");
+                }
+
                 if (depthDataExtractor.TryGetUpdatedDepthTexture(out var renderTexture, out var frameDescriptors))
                 {
                     if (renderTexture != null && renderTexture.IsCreated())
