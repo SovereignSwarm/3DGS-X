@@ -154,7 +154,7 @@ To convert raw depth maps into linear or 3D form, refer to the companion project
 
 ### For End Users
 
-> Side-loading is required to install this app on the Quest. [This video](https://www.youtube.com/watch?v=bsC805t63-E) has a good guide on how to set up sideloading. The APK can be found in the [Releases](https://github.com/samuelm2/OpenQuestCapture/releases) section of this repository.
+Side-loading is required to install this app on the Quest. [This video](https://www.youtube.com/watch?v=bsC805t63-E) has a good guide on how to set up sideloading. The APK can be found in the [Releases](https://github.com/samuelm2/OpenQuestCapture/releases) section of this repository.
 
 
 ## 🎮 Usage
