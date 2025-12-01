@@ -1,7 +1,7 @@
 # OpenQuestCapture
 
 
-**Capture and store real-world data on Meta Quest 3 or 3s, including HMD/controller poses, stereo passthrough images, camera metadata, and depth maps.**
+**Capture and store real-world sensor data on Meta Quest 3**
 
 
 ![Demo](docs/demo.gif)
@@ -11,9 +11,11 @@
 
 ## 📖 Overview
 
-`OpenQuestCapture` is a Unity-based data logging app for Meta Quest 3. It captures and stores synchronized real-world information such as headset and controller poses, images from both passthrough cameras, camera characteristics, and depth data, organized per session.
+`OpenQuestCapture` is a Unity-based data logging and visualization tool designed for the Meta Quest 3. It captures synchronized, high-fidelity real-world data—including headset poses, stereo passthrough images, camera intrinsics, and depth maps—organized into session-based logs.
 
-For **data parsing, visualization, and reconstruction**, refer to the companion project:
+Beyond data capture, the app features **real-time depth point cloud visualization**, allowing users to see the captured environment and verify coverage directly within the headset. This ensures high-quality data collection for downstream tasks like 3D reconstruction and SLAM.
+
+For **data parsing, visualization, and reconstruction** into COLMAP format, refer to the companion project:
 **[Meta Quest 3D Reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)**
 
 This includes:
@@ -152,8 +154,7 @@ To convert raw depth maps into linear or 3D form, refer to the companion project
 
 ### For End Users
 
-> [!NOTE]
-> Releases are not yet available. Please build from source or check back later.
+> Side-loading is required to install this app on the Quest. [This video](https://www.youtube.com/watch?v=bsC805t63-E) has a good guide on how to set up sideloading. The APK can be found in the [Releases](https://github.com/samuelm2/OpenQuestCapture/releases) section of this repository.
 
 
 ## 🎮 Usage
@@ -172,8 +173,6 @@ To convert raw depth maps into linear or 3D form, refer to the companion project
      - **Export** sessions to a zip file (saved directly to the Quest Downloads folder: `/Download/Export/`).
      - **Delete** unwanted sessions to free up space.
 
-> [!NOTE]
-> The capture frame rate is set to **3 FPS** by default to balance performance and data quality for reconstruction.
 
 ---
 
@@ -225,6 +224,7 @@ Once in colmap format, the reconstruction can be passed into various Gaussian Sp
 
 * Unity **6000.2.9f1**
 * Meta OpenXR SDK
+* Meta MRUK (Mixed Reality Utility Kit)
 * Device: Meta Quest 3 or 3s only
 
 ---
