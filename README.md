@@ -6,6 +6,13 @@
 
 ![Demo](docs/demo.gif)
 
+---
+
+## 🙏 Acknowledgement
+
+First I'd like to acknowledge the work of the auther of QuestRealityCapture. This project largely is built on top of the Quest sensor data capture platform / library that they built. **[QuestRealityCapture](https://github.com/t-34400/QuestRealityCapture)** by **[t-34400](https://github.com/t-34400)**.
+
+Huge thanks to the original author for their excellent work in making Quest sensor data accessible!
 
 ---
 
@@ -227,13 +234,6 @@ Once in colmap format, the reconstruction can be passed into various Gaussian Sp
 * Meta MRUK (Mixed Reality Utility Kit)
 * Device: Meta Quest 3 or 3s only
 
----
-
-## 🙏 Acknowledgements
-
-This project is a fork of **[QuestRealityCapture](https://github.com/t-34400/QuestRealityCapture)** by **[t-34400](https://github.com/t-34400)**.
-
-Huge thanks to the original author for their excellent work in making Quest sensor data accessible!
 
 ---
 
