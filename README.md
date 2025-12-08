@@ -34,6 +34,14 @@ This includes:
 
 ---
 
+## 💬 Community & Discussion
+
+Join our Discord community for discussions, support, and sharing your captures:
+
+**[Join Discord Server](https://discord.gg/y5v3BTXAUd)**
+
+---
+
 ## ✅ Features
 
 * Records HMD and controller poses (in Unity coordinate system)
@@ -249,5 +257,7 @@ This project uses Meta’s OpenXR SDK — please ensure compliance with its lice
 ## 📌 Call for Contributions
 
 This project is in its early stages and is still in active development. If you have any suggestions, bug reports, or feature requests, please open an issue or submit a pull request.
+
+Join our [Discord community](https://discord.gg/y5v3BTXAUd) to discuss ideas, get help, and share your captures with other users!
 
 One area improvment is the export process. Currently it can take several minutes to export a session. It would be great to have a faster way to do this.
