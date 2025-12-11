@@ -152,9 +152,6 @@ namespace RealityLog.Depth
             {
                 return;
             }
-            
-            // Debug: Log when we're about to capture
-            Debug.Log($"[DepthExporter] Capturing depth at Unity time={Time.unscaledTime:F3}s");
 
             if (!hasScenePermission)
             {

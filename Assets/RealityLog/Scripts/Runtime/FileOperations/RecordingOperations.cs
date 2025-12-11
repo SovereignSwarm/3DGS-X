@@ -244,8 +244,14 @@ namespace RealityLog.FileOperations
                                 if (progressState.IsCancelled) break;
 
                                 string entryName = Path.GetRelativePath(sourcePath, file);
-                                // Use Fastest compression to speed up the process on Quest
-                                archive.CreateEntryFromFile(file, entryName, System.IO.Compression.CompressionLevel.Fastest);
+                                
+                                // QOI files are already compressed - don't compress them again
+                                // Other files (JSON, etc.) get fast compression
+                                var compressionLevel = file.EndsWith(".qoi", StringComparison.OrdinalIgnoreCase)
+                                    ? System.IO.Compression.CompressionLevel.NoCompression
+                                    : System.IO.Compression.CompressionLevel.Fastest;
+                                
+                                archive.CreateEntryFromFile(file, entryName, compressionLevel);
                                 
                                 System.Threading.Interlocked.Increment(ref progressState.ProcessedFiles);
                             }

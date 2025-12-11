@@ -55,7 +55,8 @@ namespace RealityLog.Camera
                 size.height,
                 imageFileDirPath,
                 formatInfoFilePath,
-                bufferPoolSize
+                bufferPoolSize,
+                true  // useQoiCompression - enables QOI compression for size reduction
             );
 
             Debug.Log($"[ImageReaderSurfaceProvider] Camera initialized - will respond to capture signals from CaptureTimer");
@@ -120,7 +121,6 @@ namespace RealityLog.Camera
             // This ensures camera and depth are triggered at the exact same Unity frame
             if (captureTimer.IsCapturing && captureTimer.ShouldCaptureThisFrame)
             {
-                Debug.Log($"[ImageReader] Signaling camera capture at Unity time={Time.unscaledTime:F3}s");
                 currentInstance.Call(CAPTURE_NEXT_FRAME_METHOD_NAME);
             }
         }

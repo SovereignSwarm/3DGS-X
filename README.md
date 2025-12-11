@@ -142,11 +142,13 @@ Example structure:
 * Includes resolution, format (e.g., `YUV_420_888`), per-plane buffer info
 * Contains baseMonoTimeNs and baseUnixTimeMs for timestamp alignment
 
-### Passthrough Camera (Raw YUV)
-- Raw YUV frames are stored as `.yuv` files under `left_camera_raw/` and `right_camera_raw/`.
+### Passthrough Camera (QOI Compressed RGB)
+- Camera images are stored as lossless QOI-compressed `.qoi` files under `left_camera_raw/` and `right_camera_raw/`.
+- QOI (Quite OK Image) format provides ~80% size reduction compared to raw YUV with zero quality loss.
 - Image format and buffer information are provided in the accompanying `*_camera_image_format.json` files.
+- **Legacy format**: Older captures used raw `.yuv` files (YUV_420_888 format). The processing pipeline supports both formats automatically.
 
-To convert passthrough YUV (YUV_420_888) images to RGB for visualization or reconstruction, see: [Meta Quest 3D Reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)
+To process QOI images for visualization or reconstruction, see: [Meta Quest 3D Reconstruction](https://github.com/samuelm2/quest-3d-reconstruction)
 
 ### Depth Map Descriptor CSV
 
