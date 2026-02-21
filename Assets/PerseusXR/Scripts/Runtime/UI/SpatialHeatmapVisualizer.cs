@@ -2,7 +2,6 @@
 
 using System.Collections.Generic;
 using UnityEngine;
-using Meta.XR.MRUtilityKit;
 
 namespace PerseusXR.UI
 {
@@ -27,6 +26,14 @@ namespace PerseusXR.UI
         private HashSet<Vector3Int> scannedVoxels = new HashSet<Vector3Int>();
         private List<GameObject> activeVoxelObjects = new List<GameObject>();
         
+        private Queue<GameObject> voxelPool = new Queue<GameObject>();
+        [Tooltip("Pre-warm pool size to prevent hiccups.")]
+        [SerializeField] private int initialPoolSize = 1000;
+        
+        [Tooltip("Hard limit on active meshes to prevent Quest SLAM hitching during large room scans.")]
+        [SerializeField] private int maxVoxelPrimitives = 3000;
+        private Queue<GameObject> activeVoxelHistory = new Queue<GameObject>();
+        
         private Transform centerEyeAnchor = default!;
         private CapturePass lastProcessedPass = CapturePass.Geometry;
         private float currentVoxelSize = 0.5f;
@@ -40,6 +47,37 @@ namespace PerseusXR.UI
             {
                 guidedManager.OnPassChanged += HandlePassChange;
             }
+
+            // Pre-warm pool
+            for (int i = 0; i < initialPoolSize; i++)
+            {
+                GameObject obj = CreateNewVoxel();
+                obj.SetActive(false);
+                voxelPool.Enqueue(obj);
+            }
+        }
+
+        private GameObject CreateNewVoxel()
+        {
+            GameObject obj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            Destroy(obj.GetComponent<Collider>());
+            if (heatmapMaterial != null)
+            {
+                var renderer = obj.GetComponent<Renderer>();
+                renderer.material = new Material(heatmapMaterial); // unique material instance to safely shift colors
+            }
+            return obj;
+        }
+
+        private GameObject GetPooledVoxel()
+        {
+            if (voxelPool.Count > 0)
+            {
+                GameObject obj = voxelPool.Dequeue();
+                obj.SetActive(true);
+                return obj;
+            }
+            return CreateNewVoxel();
         }
 
         private void OnDestroy()
@@ -77,10 +115,11 @@ namespace PerseusXR.UI
 
         private void UpdateCoverage()
         {
+#if META_XR_MR_UTILITY_KIT
             // Use MRUK Environment Raycast to find what the user is looking at
-            if (MRUK.Instance != null && MRUK.Instance.GetCurrentRoom() != null)
+            if (Meta.XR.MRUtilityKit.MRUK.Instance != null && Meta.XR.MRUtilityKit.MRUK.Instance.GetCurrentRoom() != null)
             {
-                var room = MRUK.Instance.GetCurrentRoom();
+                var room = Meta.XR.MRUtilityKit.MRUK.Instance.GetCurrentRoom();
                 
                 bool hit = room.Raycast(new Ray(centerEyeAnchor.position, centerEyeAnchor.forward), raycastDistance, out var hitInfo);
                 
@@ -95,8 +134,9 @@ namespace PerseusXR.UI
                     }
                     else if (guidedManager.CurrentPass == CapturePass.TextureDetail)
                     {
-                        // Enforce proximity
-                        Color color = hitDistance > 1.5f ? new Color(1f, 0f, 0.8f, 0.4f) : new Color(0f, 1f, 1f, 0.6f); // Magenta warning, Cyan success
+                          // PerseusXR Cinematic Virtual Production Palette
+                        // Cobalt/Silver for standard scans. Amber for Warnings.
+                        Color color = hitDistance > 1.5f ? new Color(1f, 0.55f, 0f, 0.45f) : new Color(0.75f, 0.75f, 0.75f, 0.6f); 
                         ProcessVoxelPass(hitPoint, color);
                     }
                     else if (guidedManager.CurrentPass == CapturePass.ViewDependent)
@@ -105,6 +145,7 @@ namespace PerseusXR.UI
                     }
                 }
             }
+#endif
         }
 
         private void ProcessVoxelPass(Vector3 hitPoint, Color voxelColor)
@@ -137,39 +178,42 @@ namespace PerseusXR.UI
 
         private Vector3Int WorldToVoxel(Vector3 worldPos, float size)
         {
+            Vector3 localPos = transform.InverseTransformPoint(worldPos);
             return new Vector3Int(
-                Mathf.FloorToInt(worldPos.x / size),
-                Mathf.FloorToInt(worldPos.y / size),
-                Mathf.FloorToInt(worldPos.z / size)
+                Mathf.FloorToInt(localPos.x / size),
+                Mathf.FloorToInt(localPos.y / size),
+                Mathf.FloorToInt(localPos.z / size)
             );
         }
 
         private Vector3 VoxelToWorld(Vector3Int voxelCoords, float size)
         {
-            return new Vector3(
+            Vector3 localPos = new Vector3(
                 (voxelCoords.x * size) + (size / 2f),
                 (voxelCoords.y * size) + (size / 2f),
                 (voxelCoords.z * size) + (size / 2f)
             );
+            return transform.TransformPoint(localPos);
         }
 
         private void SpawnVoxelIndicator(Vector3Int voxelCoords, Color color)
         {
-            GameObject voxelObj = GameObject.CreatePrimitive(PrimitiveType.Sphere); // Sleek Point-Cloud Style
+            GameObject voxelObj = GetPooledVoxel();
             voxelObj.name = $"Voxel_{voxelCoords.x}_{voxelCoords.y}_{voxelCoords.z}";
+            voxelObj.transform.SetParent(transform, true);
             voxelObj.transform.position = VoxelToWorld(voxelCoords, currentVoxelSize);
             voxelObj.transform.localScale = Vector3.one * (currentVoxelSize * 0.9f);
             
-            Destroy(voxelObj.GetComponent<Collider>());
+            var existingAnchor = voxelObj.GetComponent<DirectionAnchor>();
+            if (existingAnchor != null) Destroy(existingAnchor);
             
             if (heatmapMaterial != null)
             {
                 var renderer = voxelObj.GetComponent<Renderer>();
-                renderer.material = heatmapMaterial;
                 renderer.material.color = color;
             }
             
-            activeVoxelObjects.Add(voxelObj);
+            RegisterActiveVoxel(voxelObj);
         }
 
         private void UpdateVoxelColor(Vector3Int voxelCoords, Color color)
@@ -191,22 +235,55 @@ namespace PerseusXR.UI
 
         private void SpawnDirectionAnchor(Vector3 position, Vector3 normal)
         {
-            GameObject anchorObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            GameObject anchorObj = GetPooledVoxel();
+            anchorObj.name = "DirectionAnchor";
+            anchorObj.transform.SetParent(transform, true);
             anchorObj.transform.position = position;
             anchorObj.transform.localScale = Vector3.one * 0.1f;
-            
-            Destroy(anchorObj.GetComponent<Collider>());
 
             if (heatmapMaterial != null)
             {
                 var renderer = anchorObj.GetComponent<Renderer>();
-                renderer.material = heatmapMaterial;
+                renderer.material.color = Color.white;
             }
 
-            var anchorScript = anchorObj.AddComponent<DirectionAnchor>();
+            var anchorScript = anchorObj.GetComponent<DirectionAnchor>();
+            if (anchorScript == null) anchorScript = anchorObj.AddComponent<DirectionAnchor>();
+            
             anchorScript.InitialViewDirection = centerEyeAnchor.forward;
 
-            activeVoxelObjects.Add(anchorObj);
+            RegisterActiveVoxel(anchorObj);
+        }
+
+        private void RegisterActiveVoxel(GameObject obj)
+        {
+            activeVoxelObjects.Add(obj);
+            activeVoxelHistory.Enqueue(obj);
+
+            // FIFO optimization: Strip oldest meshes if we exceed Quest drawing caps
+            while (activeVoxelObjects.Count > maxVoxelPrimitives)
+            {
+                GameObject oldestObj = activeVoxelHistory.Dequeue();
+                if (oldestObj != null)
+                {
+                    activeVoxelObjects.Remove(oldestObj);
+                    oldestObj.SetActive(false);
+                    voxelPool.Enqueue(oldestObj);
+                    
+                    // Calculate its hash coordinates simply by name parsing, and remove from fast-lookup set
+                    if (oldestObj.name.StartsWith("Voxel_"))
+                    {
+                        string[] parts = oldestObj.name.Split('_');
+                        if (parts.Length == 4)
+                        {
+                            if (int.TryParse(parts[1], out int x) && int.TryParse(parts[2], out int y) && int.TryParse(parts[3], out int z))
+                            {
+                                scannedVoxels.Remove(new Vector3Int(x, y, z));
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         private void ClearHeatmap()
@@ -215,9 +292,14 @@ namespace PerseusXR.UI
 
             foreach (var go in activeVoxelObjects)
             {
-                if (go != null) Destroy(go);
+                if (go != null)
+                {
+                    go.SetActive(false);
+                    voxelPool.Enqueue(go);
+                }
             }
             activeVoxelObjects.Clear();
+            activeVoxelHistory.Clear();
             scannedVoxels.Clear();
         }
     }

@@ -43,8 +43,8 @@ namespace PerseusXR.Depth
                 var main = pointCloudParticleSystem.main;
                 main.simulationSpace = ParticleSystemSimulationSpace.World;
                 main.startSpeed = 0.00001f; // Small non-zero value to prevent culling
-                main.startLifetime = 1000f; // Long lifetime
-                main.maxParticles = 100000;
+                main.startLifetime = 0.1f; // Extremely short lifetime to prevent OOM crash
+                main.maxParticles = 10000;
             }
             else
             {

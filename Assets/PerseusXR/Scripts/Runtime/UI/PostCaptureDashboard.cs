@@ -37,6 +37,7 @@ namespace PerseusXR.UI
         private int blurWarningsTriggered = 0;
         private float sessionDuration = 0f;
         private bool wasRecording = false;
+        private float stopHapticTime = -1f;
 
         private void Start()
         {
@@ -58,6 +59,11 @@ namespace PerseusXR.UI
 
         private void Update()
         {
+            if (stopHapticTime > 0 && Time.time >= stopHapticTime)
+            {
+                StopVibration();
+            }
+
             if (recordingManager == null) return;
 
             bool isCurrentlyRecording = recordingManager.IsRecording;
@@ -97,8 +103,8 @@ namespace PerseusXR.UI
             }
 
             // Provide a satisfying success rumble
-            OVRInput.SetControllerVibration(1.0f, 1.0f, OVRInput.Controller.RTouch);
-            Invoke(nameof(StopVibration), 0.5f);
+            TriggerVibration(1.0f);
+            stopHapticTime = Time.time + 0.5f;
 
             if (directoryPathText != null)
             {
@@ -134,13 +140,19 @@ namespace PerseusXR.UI
                 dashboardPanel.SetActive(false);
             }
             // Add a small click haptic
-            OVRInput.SetControllerVibration(1.0f, 0.2f, OVRInput.Controller.RTouch);
-            Invoke(nameof(StopVibration), 0.1f);
+            TriggerVibration(0.2f);
+            stopHapticTime = Time.time + 0.1f;
+        }
+
+        private void TriggerVibration(float amplitude)
+        {
+            OVRInput.SetControllerVibration(1.0f, amplitude, OVRInput.Controller.RTouch);
         }
 
         private void StopVibration()
         {
             OVRInput.SetControllerVibration(0, 0, OVRInput.Controller.RTouch);
+            stopHapticTime = -1f;
         }
 
         /// <summary>

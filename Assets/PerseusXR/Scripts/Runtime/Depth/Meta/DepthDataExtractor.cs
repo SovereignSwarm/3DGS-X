@@ -76,6 +76,7 @@ namespace PerseusXR.Depth
                     {
                         if (entry.renderTexture != null)
                         {
+                            entry.renderTexture.Release();
                             UnityEngine.Object.Destroy(entry.renderTexture);
                         }
                     }
@@ -123,60 +124,71 @@ namespace PerseusXR.Depth
                 }
             }
 
-            if (!occlusionSubsystem.TryGetFrame(Allocator.Temp, out var frame)
-                || !frame.TryGetTimestamp(out var timestampNs)
-                || !frame.TryGetFovs(out var fovs)
-                || !frame.TryGetPoses(out var poses)
-                || !frame.TryGetNearFarPlanes(out var planes))
+            if (!occlusionSubsystem.TryGetFrame(Allocator.TempJob, out var frame))
             {
                 return false;
             }
 
-            var textures = occlusionSubsystem.GetTextureDescriptors(Allocator.Temp);
-            if (textures.Length == 0) return false;
-
-            var nativeTexture = textures[0].nativeTexture;
-            if (nativeTexture == prevNativeTexture) return false;
-            prevNativeTexture = nativeTexture;
-
-            if (!depthTextures.TryGetValue(nativeTexture, out var textureData))
+            try
             {
-                Debug.LogError("Unknown native texture received.");
-                return false;
-            }
-
-            var _depthTexture = textureData.renderTexture;
-
-            if (_depthTexture == null)
-            {
-                _depthTexture = displaySubsystem.GetRenderTexture(textureData.textureId);
-                if (_depthTexture == null)
+                if (!frame.TryGetTimestamp(out var timestampNs)
+                    || !frame.TryGetFovs(out var fovs)
+                    || !frame.TryGetPoses(out var poses)
+                    || !frame.TryGetNearFarPlanes(out var planes))
                 {
-                    Debug.Log("GetRenderTexture failed.");
                     return false;
                 }
-                depthTextures[nativeTexture] = (textureData.textureId, _depthTexture);
-            }
 
-            depthTexture = _depthTexture;
+                var textures = occlusionSubsystem.GetTextureDescriptors(Allocator.Temp);
+                if (textures.Length == 0) return false;
 
-            for (int i = 0; i < depthFrameDescs.Length; i++)
-            {
-                depthFrameDescs[i] = new DepthFrameDesc
+                var nativeTexture = textures[0].nativeTexture;
+                if (nativeTexture == prevNativeTexture) return false;
+                prevNativeTexture = nativeTexture;
+
+                if (!depthTextures.TryGetValue(nativeTexture, out var textureData))
                 {
-                    timestampNs = timestampNs,
-                    createPoseLocation = poses[i].position,
-                    createPoseRotation = poses[i].rotation,
-                    fovLeftAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleLeft)),
-                    fovRightAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleRight)),
-                    fovTopAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleUp)),
-                    fovDownAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleDown)),
-                    nearZ = planes.nearZ,
-                    farZ = planes.farZ
-                };
-            }
+                    Debug.LogError("Unknown native texture received.");
+                    return false;
+                }
 
-            return true;
+                var _depthTexture = textureData.renderTexture;
+
+                if (_depthTexture == null)
+                {
+                    _depthTexture = displaySubsystem.GetRenderTexture(textureData.textureId);
+                    if (_depthTexture == null)
+                    {
+                        Debug.Log("GetRenderTexture failed.");
+                        return false;
+                    }
+                    depthTextures[nativeTexture] = (textureData.textureId, _depthTexture);
+                }
+
+                depthTexture = _depthTexture;
+
+                for (int i = 0; i < depthFrameDescs.Length; i++)
+                {
+                    depthFrameDescs[i] = new DepthFrameDesc
+                    {
+                        timestampNs = timestampNs,
+                        createPoseLocation = poses[i].position,
+                        createPoseRotation = poses[i].rotation,
+                        fovLeftAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleLeft)),
+                        fovRightAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleRight)),
+                        fovTopAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleUp)),
+                        fovDownAngleTangent = Mathf.Tan(Mathf.Abs(fovs[i].angleDown)),
+                        nearZ = planes.nearZ,
+                        farZ = planes.farZ
+                    };
+                }
+
+                return true;
+            }
+            finally
+            {
+                frame.Dispose();
+            }
         }
 
         private static UnityXRRenderTextureDesc ToUnityXRRenderTextureDesc(XRTextureDescriptor desc)

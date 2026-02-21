@@ -58,55 +58,60 @@ namespace PerseusXR.UI
         public List<RecordingInfo> Recordings => new List<RecordingInfo>(recordings);
 
         /// <summary>
-        /// Scans the persistent data path for recording directories.
+        /// Scans the persistent data path for recording directories via background thread.
         /// </summary>
-        public void RefreshRecordings()
+        public async void RefreshRecordings()
         {
-            recordings.Clear();
-
             try
             {
                 string dataPath = Application.persistentDataPath;
-                
-                if (!Directory.Exists(dataPath))
-                {
-                    Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingListManager: Data path does not exist: {dataPath}");
-                    OnRecordingsUpdated?.Invoke(recordings);
-                    return;
-                }
 
-                var directories = Directory.GetDirectories(dataPath);
-                
-                foreach (var dirPath in directories)
+                // Offload recursive disk IO to background thread to prevent UI freezing
+                var newRecordings = await System.Threading.Tasks.Task.Run(() =>
                 {
-                    string dirName = Path.GetFileName(dirPath);
+                    var bgRecordings = new List<RecordingInfo>();
                     
-                    // Check if directory name matches recording pattern (YYYYMMDD_HHMMSS)
-                    if (System.Text.RegularExpressions.Regex.IsMatch(dirName, recordingDirectoryPattern))
+                    if (!Directory.Exists(dataPath))
                     {
-                        try
+                        Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingListManager: Data path does not exist: {dataPath}");
+                        return bgRecordings;
+                    }
+
+                    var directories = Directory.GetDirectories(dataPath);
+                    
+                    foreach (var dirPath in directories)
+                    {
+                        string dirName = Path.GetFileName(dirPath);
+                        
+                        // Check if directory name matches recording pattern (YYYYMMDD_HHMMSS)
+                        if (System.Text.RegularExpressions.Regex.IsMatch(dirName, recordingDirectoryPattern))
                         {
-                            var info = new DirectoryInfo(dirPath);
-                            var recordingInfo = new RecordingInfo
+                            try
                             {
-                                DirectoryName = dirName,
-                                FullPath = dirPath,
-                                CreationTime = info.CreationTime,
-                                SizeBytes = CalculateDirectorySize(dirPath)
-                            };
-                            
-                            recordings.Add(recordingInfo);
-                        }
-                        catch (Exception e)
-                        {
-                            Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingListManager: Error reading directory {dirName}: {e.Message}");
+                                var info = new DirectoryInfo(dirPath);
+                                var recordingInfo = new RecordingInfo
+                                {
+                                    DirectoryName = dirName,
+                                    FullPath = dirPath,
+                                    CreationTime = info.CreationTime,
+                                    SizeBytes = CalculateDirectorySize(dirPath)
+                                };
+                                
+                                bgRecordings.Add(recordingInfo);
+                            }
+                            catch (Exception e)
+                            {
+                                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingListManager: Error reading directory {dirName}: {e.Message}");
+                            }
                         }
                     }
-                }
 
-                // Sort by creation time, newest first
-                recordings = recordings.OrderByDescending(r => r.CreationTime).ToList();
+                    // Sort by creation time, newest first
+                    return bgRecordings.OrderByDescending(r => r.CreationTime).ToList();
+                });
 
+                // Re-sync onto Unity Main Thread for UI listeners
+                recordings = newRecordings;
                 Debug.Log($"[{Constants.LOG_TAG}] RecordingListManager: Found {recordings.Count} recordings");
                 OnRecordingsUpdated?.Invoke(recordings);
             }
@@ -120,7 +125,7 @@ namespace PerseusXR.UI
         /// <summary>
         /// Calculates the total size of a directory in bytes.
         /// </summary>
-        private long CalculateDirectorySize(string directoryPath)
+        private static long CalculateDirectorySize(string directoryPath)
         {
             long size = 0;
             try

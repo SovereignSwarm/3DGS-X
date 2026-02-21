@@ -56,6 +56,8 @@ namespace PerseusXR.Camera
 
         public event Action<AndroidJavaObject>? CameraManagerInstantiated;
 
+        private Coroutine? checkCameraCoroutine;
+
 # if UNITY_ANDROID
         private void Start()
         {
@@ -77,7 +79,7 @@ namespace PerseusXR.Camera
                 JavaInstance = new AndroidJavaObject(CAMEAR_PERMISSION_MANAGER_CLASS_NAME, currentActivity);
                 JavaInstance.Call(REQUEST_CAMERA_PERMISSION_METHOD_NAME);
 
-                StartCoroutine(CheckCameraManagerCoroutine());
+                checkCameraCoroutine = StartCoroutine(CheckCameraManagerCoroutine());
             }
         }
 
@@ -89,7 +91,11 @@ namespace PerseusXR.Camera
             CameraManagerJavaInstance?.Dispose();
             CameraManagerJavaInstance = null;
 
-            StopAllCoroutines();
+            if (checkCameraCoroutine != null)
+            {
+                StopCoroutine(checkCameraCoroutine);
+                checkCameraCoroutine = null;
+            }
         }
 
         private IEnumerator CheckCameraManagerCoroutine()

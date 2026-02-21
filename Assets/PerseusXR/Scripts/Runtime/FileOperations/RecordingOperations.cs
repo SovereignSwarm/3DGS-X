@@ -151,11 +151,18 @@ namespace PerseusXR.FileOperations
         /// </summary>
         public event Action<string, float>? OnOperationProgress;
 
+        private bool _isOperating = false;
+
         /// <summary>
         /// Compresses a recording directory into a ZIP file asynchronously.
         /// </summary>
         public void CompressRecordingAsync(string directoryName)
         {
+            if (_isOperating)
+            {
+                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingOperations: Operation already in progress.");
+                return;
+            }
             StartCoroutine(CompressCoroutine(directoryName, false));
         }
 
@@ -164,6 +171,11 @@ namespace PerseusXR.FileOperations
         /// </summary>
         public void ExportRecordingAsync(string directoryName)
         {
+            if (_isOperating)
+            {
+                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingOperations: Operation already in progress.");
+                return;
+            }
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.ExternalStorageWrite))
             {
@@ -173,6 +185,7 @@ namespace PerseusXR.FileOperations
                 {
                     if (permission == UnityEngine.Android.Permission.ExternalStorageWrite)
                     {
+                        if (_isOperating) return;
                         StartCoroutine(CompressCoroutine(directoryName, true));
                     }
                 };
@@ -201,12 +214,14 @@ namespace PerseusXR.FileOperations
 
         private System.Collections.IEnumerator CompressCoroutine(string directoryName, bool isExport)
         {
+            _isOperating = true;
             string operationName = isExport ? "Export" : "Compress";
 
             // Sanitize directory name to prevent path traversal
             directoryName = Path.GetFileName(directoryName);
             if (string.IsNullOrEmpty(directoryName))
             {
+                _isOperating = false;
                 OnOperationComplete?.Invoke(operationName, false, "Invalid directory name");
                 yield break;
             }
@@ -238,19 +253,6 @@ namespace PerseusXR.FileOperations
 
                 Exception? threadException = null;
 
-                // Get file list on main thread
-                string[] files;
-                try
-                {
-                    files = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
-                }
-                catch (Exception e)
-                {
-                    OnOperationComplete?.Invoke(operationName, false, $"Error listing files: {e.Message}");
-                    yield break;
-                }
-
-                int totalFiles = files.Length;
                 // Shared state for progress reporting
                 // We use a class or closure to share state safely
                 var progressState = new ProgressState();
@@ -260,6 +262,10 @@ namespace PerseusXR.FileOperations
                 {
                     try
                     {
+                        // Safely traverse directory array on background thread to prevent UI freezing 
+                        string[] files = Directory.GetFiles(sourcePath, "*", SearchOption.AllDirectories);
+                        progressState.TotalFiles = files.Length;
+
                         // Create empty zip
                         using (var zipToOpen = new FileStream(zipPath, FileMode.Create))
                         using (var archive = new ZipArchive(zipToOpen, ZipArchiveMode.Create))
@@ -289,8 +295,15 @@ namespace PerseusXR.FileOperations
                 // Poll for progress on main thread
                 while (!progressState.IsDone)
                 {
-                    float progress = (float)progressState.ProcessedFiles / totalFiles;
-                    OnOperationProgress?.Invoke(operationName, progress);
+                    if (progressState.TotalFiles > 0)
+                    {
+                        float progress = (float)progressState.ProcessedFiles / progressState.TotalFiles;
+                        OnOperationProgress?.Invoke(operationName, progress);
+                    }
+                    else
+                    {
+                        OnOperationProgress?.Invoke(operationName, 0f);
+                    }
                     yield return null;
                 }
 
@@ -348,12 +361,14 @@ namespace PerseusXR.FileOperations
             {
                 // Restore original runInBackground setting
                 Application.runInBackground = originalRunInBackground;
+                _isOperating = false;
             }
         }
 
         private class ProgressState
         {
             public int ProcessedFiles;
+            public int TotalFiles;
             public bool IsDone;
             public bool IsCancelled;
             public Exception? Exception;

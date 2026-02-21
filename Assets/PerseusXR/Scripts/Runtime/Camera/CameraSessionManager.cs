@@ -63,12 +63,12 @@ namespace PerseusXR.Camera
                     resumeCoroutine = null;
                 }
                 
-                // Do NOT destroy camera mid-recording — this would reset Kotlin base time
-                // and create a timestamp discontinuity that corrupts pose interpolation
+                // Instead of keeping the camera session alive during a background state
+                // (which causes fatal Android CAMERA_DISCONNECTED crashes), safely stop the recording.
                 if (recordingManager != null && recordingManager.IsRecording)
                 {
-                    Debug.LogWarning($"[{Constants.LOG_TAG}] App pausing during recording — keeping camera session alive to prevent timestamp discontinuity");
-                    return;
+                    Debug.LogWarning($"[{Constants.LOG_TAG}] App pausing during recording — stopping recording to gracefully clean up camera.");
+                    recordingManager.StopRecording();
                 }
                 
                 Debug.Log($"[{Constants.LOG_TAG}] App pausing - closing camera session");

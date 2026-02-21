@@ -14,7 +14,8 @@ namespace PerseusXR.UI
     {
         Geometry,      // Broad room structure
         TextureDetail, // Close-up surfaces (< 1.5m)
-        ViewDependent  // Orbital/specular reflections (> 30 deg view delta)
+        ViewDependent, // Orbital/specular reflections (> 30 deg view delta)
+        Complete       // Scan finished
     }
 
     /// <summary>
@@ -49,7 +50,7 @@ namespace PerseusXR.UI
 
             // Allow the user to manually advance passes using the B button (Right Controller)
             // In a full commercial app, this would be heavily automated by MRUK completion %
-            if (OVRInput.GetDown(OVRInput.Button.Two) && Time.time - lastPassChangeTime > passCooldown)
+            if (OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch) && Time.time - lastPassChangeTime > passCooldown)
             {
                 AdvancePass();
             }
@@ -81,6 +82,7 @@ namespace PerseusXR.UI
                     Invoke(nameof(StopVibration), 0.2f);
                     break;
                 case CapturePass.ViewDependent:
+                    currentPass = CapturePass.Complete;
                     Debug.Log($"[GuidedCapture] All passes complete! The user should ideally stop recording now.");
                     // Double pulse to signal completion
                     OVRInput.SetControllerVibration(1.0f, 1.0f, OVRInput.Controller.RTouch);
@@ -116,6 +118,7 @@ namespace PerseusXR.UI
                 CapturePass.Geometry => "Pass 1/3: Paint broad strokes.",
                 CapturePass.TextureDetail => "Pass 2/3: Get close (<1.5m).",
                 CapturePass.ViewDependent => "Pass 3/3: Orbit surfaces.",
+                CapturePass.Complete => "Scan Complete. Stop Recording.",
                 _ => "Capture Active"
             };
         }

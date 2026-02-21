@@ -1,7 +1,6 @@
 # nullable enable
 
 using System;
-using System.IO;
 using UnityEngine;
 using PerseusXR.Common;
 
@@ -22,11 +21,20 @@ namespace PerseusXR.UI
         /// </summary>
         public event Action<string, bool, string>? OnUploadComplete;
 
+        private bool _isUploading = false;
+
         /// <summary>
         /// Uploads a recording directory to Google Drive.
         /// </summary>
         public void UploadRecording(string directoryName)
         {
+            if (_isUploading)
+            {
+                Debug.LogWarning($"[{Constants.LOG_TAG}] GoogleDriveUploader: Upload already in progress.");
+                return;
+            }
+            _isUploading = true;
+
             // TODO: Implement Google Drive API integration
             // This will require:
             // 1. Google Drive API client library
@@ -35,16 +43,13 @@ namespace PerseusXR.UI
             // 4. Progress tracking
             // 5. Error handling
 
-            string sourcePath = Path.Join(Application.persistentDataPath, directoryName);
-            
-            if (!Directory.Exists(sourcePath))
-            {
-                OnUploadComplete?.Invoke(directoryName, false, "Directory not found");
-                return;
-            }
+            // NOTE: UI script no longer directly accesses System.IO or handles raw paths.
+            // Assumption: provided 'directoryName' has been validated by a dedicated controller.
 
             Debug.LogWarning($"[{Constants.LOG_TAG}] GoogleDriveUploader: Upload not yet implemented for {directoryName}");
             OnUploadComplete?.Invoke(directoryName, false, "Google Drive upload not yet implemented");
+            
+            _isUploading = false;
         }
 
         /// <summary>
@@ -52,9 +57,14 @@ namespace PerseusXR.UI
         /// </summary>
         public void UploadCompressedRecording(string zipFilePath)
         {
+            if (_isUploading) return;
+            _isUploading = true;
+
             // TODO: Implement upload of ZIP file
             Debug.LogWarning($"[{Constants.LOG_TAG}] GoogleDriveUploader: Upload not yet implemented");
-            OnUploadComplete?.Invoke(Path.GetFileName(zipFilePath), false, "Google Drive upload not yet implemented");
+            OnUploadComplete?.Invoke(zipFilePath, false, "Google Drive upload not yet implemented");
+            
+            _isUploading = false;
         }
 
         /// <summary>

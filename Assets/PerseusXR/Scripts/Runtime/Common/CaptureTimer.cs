@@ -79,19 +79,20 @@ namespace PerseusXR.Common
             // Use unscaled time for consistency
             float currentTime = Time.unscaledTime;
             
-                // Check if enough time has passed for next capture
-                if ((currentTime - lastCaptureTime) >= captureInterval)
-                {
-                    shouldCaptureThisFrame = true;
-                    lastCaptureTime = currentTime;
+            // Check if enough time has passed for next capture
+            if ((currentTime - lastCaptureTime) >= captureInterval)
+            {
+                shouldCaptureThisFrame = true;
+                // Add the interval explicitly to prevent microsecond drift dropping frames over long sessions
+                lastCaptureTime += captureInterval;
 #if UNITY_EDITOR
-                    Debug.Log($"[CaptureTimer] Capture signal at time={currentTime:F3}s (interval={captureInterval:F3}s)");
+                Debug.Log($"[CaptureTimer] Capture signal at time={currentTime:F3}s (interval={captureInterval:F3}s)");
 #endif
-                }
-                else
-                {
-                    shouldCaptureThisFrame = false;
-                }
+            }
+            else
+            {
+                shouldCaptureThisFrame = false;
+            }
         }
     }
 }

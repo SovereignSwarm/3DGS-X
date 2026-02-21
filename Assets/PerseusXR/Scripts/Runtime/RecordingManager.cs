@@ -170,18 +170,18 @@ namespace PerseusXR
             }
 
             // Store directory name before resetting state
-            string savedDirectory = currentSessionDirectory ?? string.Empty;
+            string savedDirectory = currentSessionDirectory ?? "";
+            
+            state = RecordingState.Idle;
+            recordingStartTime = 0f;
+            currentSessionDirectory = null;
 
-            // Fire saved event BEFORE resetting to Idle.
-            // Listeners may check State and need to see Finalizing for cleanup.
+            // Fire saved event AFTER resetting to Idle.
+            // External managers listening to this event can now immediately start new recordings.
             if (!string.IsNullOrEmpty(savedDirectory))
             {
                 onRecordingSaved?.Invoke(savedDirectory);
             }
-
-            state = RecordingState.Idle;
-            recordingStartTime = 0f;
-            currentSessionDirectory = null;
 
             Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Recording stopped successfully. Files saved to '{savedDirectory}'");
         }

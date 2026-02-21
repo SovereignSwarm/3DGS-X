@@ -64,7 +64,7 @@ namespace PerseusXR.UI
             
             if (menuPanel != null)
             {
-                if (listManager != null)
+                if (listManager)
                 {
                     listManager.RefreshRecordings();
                 }

@@ -28,21 +28,25 @@ namespace PerseusXR.Camera
         private AndroidJavaObject? currentInstance;
         private CameraMetadata? cameraMetadata;
 
-        public string DataDirectoryName
-        {
-            get => dataDirectoryName;
-            set => dataDirectoryName = value;
-        }
+        // Properties have been exposed to allow external controllers to inject dynamic names (e.g. left_eye, right_eye)
+        public string DataDirectoryName { get => dataDirectoryName; set => dataDirectoryName = value; }
+        public string ImageSubdirName { get => imageSubdirName; set => imageSubdirName = value; }
+        public string FormatInfoFileName { get => formatInfoFileName; set => formatInfoFileName = value; }
+        
+        // Base absolute path injected by session controller
+        public string BaseSessionPath { get; set; } = string.Empty;
 
         public override AndroidJavaObject? GetJavaInstance(CameraMetadata metadata)
         {
             Close();
 
-            // Store metadata for writing when recording starts (via UpdateDirectoryPaths)
+            // Store metadata for writing when recording starts (via external controller)
             // Don't write here because dataDirectoryName might be empty/default at app startup
             cameraMetadata = metadata;
 
-            var dataDirPath = Path.Join(Application.persistentDataPath, dataDirectoryName);
+            // Fallback to absolute persistent path if controller hasn't injected yet, though controller should manage paths.
+            var basePath = string.IsNullOrEmpty(BaseSessionPath) ? Application.persistentDataPath : BaseSessionPath;
+            var dataDirPath = Path.Join(basePath, dataDirectoryName);
 
             var imageFileDirPath = Path.Join(dataDirPath, imageSubdirName);
             var formatInfoFilePath = Path.Join(dataDirPath, formatInfoFileName);
@@ -79,33 +83,19 @@ namespace PerseusXR.Camera
         /// <summary>
         /// Updates the directory paths for a new recording session.
         /// Must be called before starting capture to ensure files are written to the correct location.
+        /// Controller injects exact strings to avoid Unity component hardcoding.
         /// </summary>
-        public void UpdateDirectoryPaths()
+        public void UpdateDirectoryPaths(string sessionBasePath, string eyeDirectoryName, string formatFileName)
         {
             if (currentInstance != null)
             {
-                var dataDirPath = Path.Join(Application.persistentDataPath, dataDirectoryName);
-                var imageFileDirPath = Path.Join(dataDirPath, imageSubdirName);
-                var formatInfoFilePath = Path.Join(dataDirPath, formatInfoFileName);
+                var imageFileDirPath = Path.Join(sessionBasePath, eyeDirectoryName);
+                var formatInfoFilePath = Path.Join(sessionBasePath, formatFileName);
                 
                 currentInstance.Call(UPDATE_DIRECTORY_PATHS_METHOD_NAME, imageFileDirPath, formatInfoFilePath);
-                Debug.Log($"[ImageReaderSurfaceProvider] Updated directory paths for session: {dataDirectoryName}");
+                Debug.Log($"[ImageReaderSurfaceProvider] Updated directory paths for session: {sessionBasePath}");
                 
-                // Re-write camera characteristics file to new session directory
-                if (cameraMetadata != null)
-                {
-                    var metaDataFilePath = Path.Join(dataDirPath, cameraMetaDataFileName);
-                    var metaDataJson = JsonUtility.ToJson(cameraMetadata);
-                    try
-                    {
-                        File.WriteAllText(metaDataFilePath, metaDataJson);
-                        Debug.Log($"[ImageReaderSurfaceProvider] Wrote camera characteristics to: {metaDataFilePath}");
-                    }
-                    catch (Exception e)
-                    {
-                        Debug.LogException(e);
-                    }
-                }
+                // NOT WRITING METADATA HERE ANYMORE. Handled by RecordingOperations centrally.
             }
         }
 

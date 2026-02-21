@@ -44,9 +44,7 @@ namespace PerseusXR.Depth
 
         private bool hasScenePermission = false;
         private bool depthSystemReady = false;
-
-        // Pre-allocated to avoid GC in OnBeforeRender hot path (P-3 fix)
-        private readonly double[] reusableRow = new double[17];
+        private float permissionCheckTimer = 0f;
 
         public bool IsDepthSystemReady => depthSystemReady;
 
@@ -113,6 +111,10 @@ namespace PerseusXR.Depth
                 // Check for permission first
                 if (!hasScenePermission)
                 {
+                    permissionCheckTimer += Time.unscaledDeltaTime;
+                    if (permissionCheckTimer < 1f) return; // Only check once per second
+                    permissionCheckTimer = 0f;
+
                     hasScenePermission = Permission.HasUserAuthorizedPermission(OVRPermissionsRequester.ScenePermission);
                     if (!hasScenePermission) return; // Wait for permission
                     
@@ -166,16 +168,9 @@ namespace PerseusXR.Depth
 
             if (!hasScenePermission)
             {
-                hasScenePermission = Permission.HasUserAuthorizedPermission(OVRPermissionsRequester.ScenePermission);
-
-                if (hasScenePermission)
-                {
-                    depthDataExtractor.SetDepthEnabled(true);
-                }
-                else
-                {
-                    return;
-                }
+                // JNI calls here in OnBeforeRender cause severe performance drops.
+                // We rely on Update() to poll for permission instead.
+                return;
             }
 
             if (depthDataExtractor.TryGetUpdatedDepthTexture(out var renderTexture, out var frameDescriptors))
@@ -192,10 +187,10 @@ namespace PerseusXR.Depth
                 }
 
                 if (frameDescriptors.Length != FRAME_DESC_COUNT)
-                    {
-                        Debug.LogError("Expected exactly two depth frame descriptors (left and right).");
-                        return;
-                    }
+                {
+                    Debug.LogError("Expected exactly two depth frame descriptors (left and right).");
+                    return;
+                }
 
                 var width = renderTexture.width;
                 var height = renderTexture.height;
@@ -214,32 +209,34 @@ namespace PerseusXR.Depth
                     var timestampMs = ConvertTimestampNsToUnixTimeMs(frameDesc.timestampNs);
                     var ovrTimestamp = frameDesc.timestampNs / 1.0e9;
 
-                    // Reuse pre-allocated array to avoid GC in OnBeforeRender
-                    reusableRow[0] = timestampMs;
-                    reusableRow[1] = ovrTimestamp;
-                    reusableRow[2] = frameDesc.createPoseLocation.x;
-                    reusableRow[3] = frameDesc.createPoseLocation.y;
-                    reusableRow[4] = frameDesc.createPoseLocation.z;
-                    reusableRow[5] = frameDesc.createPoseRotation.x;
-                    reusableRow[6] = frameDesc.createPoseRotation.y;
-                    reusableRow[7] = frameDesc.createPoseRotation.z;
-                    reusableRow[8] = frameDesc.createPoseRotation.w;
-                    reusableRow[9] = frameDesc.fovLeftAngleTangent;
-                    reusableRow[10] = frameDesc.fovRightAngleTangent;
-                    reusableRow[11] = frameDesc.fovTopAngleTangent;
-                    reusableRow[12] = frameDesc.fovDownAngleTangent;
-                    reusableRow[13] = frameDesc.nearZ;
-                    reusableRow[14] = frameDesc.farZ;
-                    reusableRow[15] = width;
-                    reusableRow[16] = height;
+                    // Create a new array instance per row to prevent background I/O race conditions
+                    // where the main thread overwrites the same array reference before it saves.
+                    double[] row = new double[17];
+                    row[0] = timestampMs;
+                    row[1] = ovrTimestamp;
+                    row[2] = frameDesc.createPoseLocation.x;
+                    row[3] = frameDesc.createPoseLocation.y;
+                    row[4] = frameDesc.createPoseLocation.z;
+                    row[5] = frameDesc.createPoseRotation.x;
+                    row[6] = frameDesc.createPoseRotation.y;
+                    row[7] = frameDesc.createPoseRotation.z;
+                    row[8] = frameDesc.createPoseRotation.w;
+                    row[9] = frameDesc.fovLeftAngleTangent;
+                    row[10] = frameDesc.fovRightAngleTangent;
+                    row[11] = frameDesc.fovTopAngleTangent;
+                    row[12] = frameDesc.fovDownAngleTangent;
+                    row[13] = frameDesc.nearZ;
+                    row[14] = frameDesc.farZ;
+                    row[15] = width;
+                    row[16] = height;
 
                     if (i == 0)
                     {
-                        leftDepthCsvWriter?.EnqueueRow(reusableRow);
+                        leftDepthCsvWriter?.EnqueueRow(row);
                     }
                     else
                     {
-                        rightDepthCsvWriter?.EnqueueRow(reusableRow);
+                        rightDepthCsvWriter?.EnqueueRow(row);
                     }
                 }
             } else {

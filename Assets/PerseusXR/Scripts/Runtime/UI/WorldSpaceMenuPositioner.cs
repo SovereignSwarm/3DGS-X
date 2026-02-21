@@ -56,6 +56,7 @@ namespace PerseusXR.UI
             position.y += heightOffset;
 
             // 2026 MRUK Best Practice: Prevent UI from clipping into physical walls
+#if META_XR_MR_UTILITY_KIT
             if (Meta.XR.MRUtilityKit.MRUK.Instance != null && Meta.XR.MRUtilityKit.MRUK.Instance.GetCurrentRoom() != null)
             {
                 var room = Meta.XR.MRUtilityKit.MRUK.Instance.GetCurrentRoom();
@@ -64,11 +65,15 @@ namespace PerseusXR.UI
                 
                 if (hit && hitInfo.HasValue)
                 {
-                    // Snap the UI slightly in front of the physical wall to prevent depth conflicts
-                    position = hitInfo.Value.hit.point - (forward * 0.1f);
+                    // Calculate a dynamic bounding buffer derived from expected UI Canvas scales
+                    // A 0.1f buffer was plunging wide UI panels straight through physical geometry.
+                    // Using a 0.35f meters (1.1 foot) standoff ensures clear legibility.
+                    float standoffDistance = 0.35f;
+                    position = hitInfo.Value.hit.point - (forward * standoffDistance);
                     position.y += heightOffset;
                 }
             }
+#endif
 
             canvasTransform.position = position;
 

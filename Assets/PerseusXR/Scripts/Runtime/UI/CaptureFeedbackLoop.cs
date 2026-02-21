@@ -1,7 +1,6 @@
 # nullable enable
 
 using UnityEngine;
-using Meta.XR.MRUtilityKit;
 
 namespace PerseusXR.UI
 {
@@ -14,6 +13,8 @@ namespace PerseusXR.UI
         [Header("References")]
         [SerializeField] private RecordingManager recordingManager = default!;
         [SerializeField] private PostCaptureDashboard postCaptureDashboard = default!;
+        [Tooltip("Direct reference to camera rig to avoid reflection polling")]
+        [SerializeField] private OVRCameraRig cameraRig = default!;
         [Tooltip("Audio source for playing capture success 'ticks'")]
         [SerializeField] private AudioSource successAudioSource = default!;
         [Tooltip("Audio source for playing motion blur 'warnings'")]
@@ -38,10 +39,11 @@ namespace PerseusXR.UI
         private float lastUpdateTime;
         private float lastTickTime;
         private float lastWarningTime;
+        private float stopHapticTime = -1f;
 
         private void Start()
         {
-            var rig = FindObjectOfType<OVRCameraRig>();
+            var rig = cameraRig != null ? cameraRig : FindObjectOfType<OVRCameraRig>();
             if (rig != null)
             {
                 centerEyeAnchor = rig.centerEyeAnchor;
@@ -53,7 +55,18 @@ namespace PerseusXR.UI
         {
             if (recordingManager == null || centerEyeAnchor == null || !recordingManager.IsRecording) 
             {
+                // Safety net: stop vibration dynamically if recording aborted mid-tick
+                if (stopHapticTime > 0)
+                {
+                    StopHaptic();
+                }
                 return;
+            }
+
+            // Strictly checked state timer instead of Reflection Invoke overhead
+            if (stopHapticTime > 0 && Time.time >= stopHapticTime)
+            {
+                StopHaptic();
             }
 
             CheckMotionWarning();
@@ -83,12 +96,12 @@ namespace PerseusXR.UI
                         lastWarningTime = Time.time;
                     }
                     
-                    OVRInput.SetControllerVibration(1.0f, warningAmplitude, hapticController);
+                    // Removed: TriggerHaptic(warningAmplitude); - Haptic punishment for head movement breaks proprioception.
                 }
                 else
                 {
                     // Turn off warning rumble
-                    OVRInput.SetControllerVibration(0, 0, hapticController);
+                    StopHaptic();
                 }
             }
 
@@ -111,18 +124,25 @@ namespace PerseusXR.UI
                 }
                 
                 // Add a very subtle, satisfying micro-haptic "click"
-                OVRInput.SetControllerVibration(1.0f, successAmplitude, hapticController);
+                TriggerHaptic(successAmplitude);
                 
-                // Turn it right off to make it a discrete "click" rather than a buzz
-                Invoke(nameof(StopSuccessHaptic), 0.05f);
+                // Track timer linearly rather than relying on GameObject lifecycle reflection
+                stopHapticTime = Time.time + 0.05f;
                 
                 lastTickTime = Time.time;
             }
         }
 
-        private void StopSuccessHaptic()
+        private void TriggerHaptic(float amplitude)
         {
-            OVRInput.SetControllerVibration(0, 0, hapticController);
+            // Hardware abstraction layer wrapper
+            OVRInput.SetControllerVibration(1.0f, amplitude, hapticController);
+        }
+
+        private void StopHaptic()
+        {
+            OVRInput.SetControllerVibration(0f, 0f, hapticController);
+            stopHapticTime = -1f;
         }
     }
 }

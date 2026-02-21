@@ -124,7 +124,11 @@ namespace PerseusXR.UI
             // Only update the target if the user has turned their head past the deadzone
             float angleToIdeal = Vector3.Angle(centerEyeAnchor.forward, transform.position - centerEyeAnchor.position);
             
-            if (angleToIdeal > deadzoneAngle || targetPosition == Vector3.zero)
+            // Check translational detachment (walking away without rotating head)
+            float distanceToIdeal = Vector3.Distance(transform.position, idealPosition);
+            bool isSpatiallyDetached = distanceToIdeal > 0.5f; // 0.5 meters of physical drift tolerance
+            
+            if (angleToIdeal > deadzoneAngle || isSpatiallyDetached || targetPosition == Vector3.zero)
             {
                 targetPosition = idealPosition;
                 

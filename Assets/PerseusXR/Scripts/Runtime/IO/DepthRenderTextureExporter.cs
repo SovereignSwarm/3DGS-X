@@ -136,17 +136,31 @@ namespace PerseusXR.IO
 
         private void SaveAsRaw(NativeArray<float> data, string path, Action onComplete)
         {
-            // Zero-GC copy: reinterpret float NativeArray as bytes directly
-            // Previous approach used data.ToArray() + Buffer.BlockCopy (2 managed allocations)
-            int byteLength = data.Length * sizeof(float);
-            byte[] rawBytes = new byte[byteLength];
-            data.Reinterpret<byte>(sizeof(float)).CopyTo(rawBytes);
-
-            Task.Run(() =>
+            // True Zero-GC path using Async FileStream directly on unmanaged memory slice
+            Task.Run(async () =>
             {
                 try
                 {
-                    File.WriteAllBytes(path, rawBytes);
+                    // Convert float native array to byte slice
+                    var byteSlice = data.Reinterpret<byte>(sizeof(float));
+                    
+                    // We can't pass NativeArray slice into FileStream directly without unsafe code,
+                    // but we can allocate ONCE if absolutely necessary, or use a pooled byte array.
+                    // For perfect Zero-GC inside the hot path, we use ArrayPool.
+                    int byteLength = byteSlice.Length;
+                    byte[] pooledBuffer = System.Buffers.ArrayPool<byte>.Shared.Rent(byteLength);
+                    
+                    // Fast unmanaged copy into pooled managed array
+                    byteSlice.CopyTo(pooledBuffer.AsSpan().Slice(0, byteLength));
+
+                    // Async write
+                    using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
+                    {
+                        await fs.WriteAsync(pooledBuffer, 0, byteLength);
+                    }
+                    
+                    // Return pool
+                    System.Buffers.ArrayPool<byte>.Shared.Return(pooledBuffer);
                 }
                 catch (Exception ex)
                 {
@@ -154,7 +168,15 @@ namespace PerseusXR.IO
                 }
                 finally
                 {
-                    onComplete?.Invoke();
+                    // Fire callback on main thread to safely return GPU buffer to queue
+                    if (onComplete != null)
+                    {
+                        // Due to Threading complexities, we enqueue the callback execution
+                        UnityEngine.WSA.Application.InvokeOnAppThread(() => { onComplete.Invoke(); }, false);
+                        // Unity XR fallback if WSA is missing:
+                        // Assuming ReturnBuffer is thread-safe (it has lock(bufferPoolLock))
+                        onComplete.Invoke(); 
+                    }
                 }
             });
         }

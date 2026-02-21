@@ -10,7 +10,7 @@ namespace PerseusXR.IO
 {
     public class CsvWriter : IDisposable
     {
-        private readonly BlockingCollection<string[]> _queue = new();
+        private readonly BlockingCollection<string> _queue = new();
         private readonly string _filePath;
         private readonly string[] _header;
         private readonly Task _writerTask;
@@ -24,11 +24,19 @@ namespace PerseusXR.IO
         }
 
         public void EnqueueRow(params double[] columns)
-            => EnqueueRow(columns.Select(f => f.ToString()).ToArray());
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(CsvWriter));
+            // Format to a single string BEFORE queueing to avoid array reference races
+            // without using LINQ allocations.
+            var line = string.Join(",", columns);
+            _queue.Add(line);
+        }
+
         public void EnqueueRow(params string[] columns)
         {
             if (_disposed) throw new ObjectDisposedException(nameof(CsvWriter));
-            _queue.Add(columns);
+            var line = string.Join(",", columns);
+            _queue.Add(line);
         }
 
         private void WriteLoop()
@@ -46,9 +54,9 @@ namespace PerseusXR.IO
                 writer.WriteLine(string.Join(",", _header));
             }
 
-            foreach (var row in _queue.GetConsumingEnumerable())
+            foreach (var line in _queue.GetConsumingEnumerable())
             {
-                writer.WriteLine(string.Join(",", row));
+                writer.WriteLine(line);
             }
         }
 

@@ -34,7 +34,7 @@ namespace PerseusXR.UI
             
             // Re-use OVRCameraRig's center eye anchor if possible, fallback to main
             var rig = FindObjectOfType<OVRCameraRig>();
-            mainCamera = rig != null ? rig.centerEyeAnchor : Camera.main?.transform;
+            mainCamera = rig != null ? rig.centerEyeAnchor : UnityEngine.Camera.main?.transform;
 
             SetColor(IncompleteColor);
         }

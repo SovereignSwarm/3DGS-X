@@ -97,7 +97,7 @@ namespace PerseusXR.OVR
             }
         }
 
-        private void FixedUpdate()
+        private void LateUpdate()
         {
             if (writer == null)
                 return;
