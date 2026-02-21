@@ -18,7 +18,7 @@ namespace PerseusXR.UI
         public Color IncompleteColor = new Color(1f, 1f, 1f, 0.3f);
         
         [Tooltip("Color of the anchor once orbital capture is achieved.")]
-        public Color CompleteColor = new Color(0f, 0.8f, 1f, 1f); // Glowing Cyan
+        public Color CompleteColor = new Color(1f, 0.55f, 0f, 0.8f); // PerseusXR Virtual Production Amber
         
         [Tooltip("The angle delta required to consider the orbital view captured.")]
         public float RequiredOrbitAngle = 30f;
@@ -65,8 +65,9 @@ namespace PerseusXR.UI
             SetColor(CompleteColor);
 
             // Trigger a satisfying haptic buzz to let the user know they got the specular angle
-            OVRInput.SetControllerVibration(1.0f, 0.8f, OVRInput.Controller.RTouch);
-            Invoke(nameof(StopVibration), 0.1f);
+            // PerseusXR Micro-click: High frequency, low amplitude.
+            OVRInput.SetControllerVibration(1.0f, 0.2f, OVRInput.Controller.RTouch);
+            Invoke(nameof(StopVibration), 0.05f);
         }
 
         private void StopVibration()

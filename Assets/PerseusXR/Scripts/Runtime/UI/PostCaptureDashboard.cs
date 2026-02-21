@@ -102,9 +102,9 @@ namespace PerseusXR.UI
                 dashboardPanel.SetActive(true);
             }
 
-            // Provide a satisfying success rumble
-            TriggerVibration(1.0f);
-            stopHapticTime = Time.time + 0.5f;
+            // Provide a satisfying success rumble (PerseusXR Micro-click)
+            TriggerVibration(0.3f);
+            stopHapticTime = Time.time + 0.05f;
 
             if (directoryPathText != null)
             {
@@ -113,8 +113,8 @@ namespace PerseusXR.UI
 
             if (pythonCommandText != null)
             {
-                // Explicit PerseusXR pipeline instructions
-                pythonCommandText.text = $"PC Processing Command:\n<color=#00FFFF>python perseusxr_process.py {directoryName}</color>";
+                // Explicit PerseusXR pipeline instructions (Silver/Amber Branding)
+                pythonCommandText.text = $"PC Processing Command:\n<color=#FF8C00>python perseusxr_process.py {directoryName}</color>";
             }
 
             if (statisticsText != null)
@@ -123,7 +123,8 @@ namespace PerseusXR.UI
                 int secs = Mathf.FloorToInt(sessionDuration % 60);
                 
                 // Determine quality based on arbitrary blur warning thresholds for demonstration
-                string qualityTier = blurWarningsTriggered > 5 ? "<color=#FF00FF>Sub-Optimal (Fast Movement)</color>" : "<color=#00FFFF>Professional Grade</color>";
+                // PerseusXR Cinematic Virtual Production Palette
+                string qualityTier = blurWarningsTriggered > 5 ? "<color=#FF8C00>Sub-Optimal (Fast Movement)</color>" : "<color=#FFFFFF>Professional Grade</color>";
                 
                 statisticsText.text = $"Capture Time: {mins:D2}:{secs:D2}\nQuality Rating: {qualityTier}";
             }
@@ -139,9 +140,9 @@ namespace PerseusXR.UI
             {
                 dashboardPanel.SetActive(false);
             }
-            // Add a small click haptic
-            TriggerVibration(0.2f);
-            stopHapticTime = Time.time + 0.1f;
+            // Add a small click haptic (PerseusXR Micro-click)
+            TriggerVibration(0.1f);
+            stopHapticTime = Time.time + 0.05f;
         }
 
         private void TriggerVibration(float amplitude)

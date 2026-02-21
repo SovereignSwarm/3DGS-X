@@ -44,6 +44,9 @@ namespace PerseusXR.UI
         private Vector3 targetPosition;
         private Quaternion targetRotation;
         
+        // Kinematic Dampening References
+        private Vector3 velocity = Vector3.zero;
+        
         private Vector3 lastHeadForward;
         private float lastUpdateTime;
 
@@ -100,13 +103,14 @@ namespace PerseusXR.UI
                 
                 if (motionWarningIndicator != null)
                 {
-                    motionWarningIndicator.color = isMovingTooFast ? new Color(1, 0, 0, 0.8f) : new Color(0, 1, 0, 0.2f);
+                    // PerseusXR Cinematic Virtual Production Palette (Amber / Translucent White)
+                    motionWarningIndicator.color = isMovingTooFast ? new Color(1f, 0.55f, 0f, 0.8f) : new Color(1f, 1f, 1f, 0.2f);
                 }
                 
                 if (motionWarningText != null)
                 {
                     motionWarningText.text = isMovingTooFast ? "SLOW DOWN" : "STABLE";
-                    motionWarningText.color = isMovingTooFast ? Color.red : Color.white;
+                    motionWarningText.color = isMovingTooFast ? new Color(1f, 0.55f, 0f, 1f) : Color.white;
                 }
             }
 
@@ -141,8 +145,9 @@ namespace PerseusXR.UI
                 }
             }
 
-            // Smoothly damp transform to target
-            transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime * followSpeed);
+            // PerseusXR Kinematic Optimization: Replace linear Lerp with Critically Damped Spring logic
+            float smoothTime = 1f / followSpeed;
+            transform.position = Vector3.SmoothDamp(transform.position, targetPosition, ref velocity, smoothTime);
             transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * followSpeed);
         }
     }

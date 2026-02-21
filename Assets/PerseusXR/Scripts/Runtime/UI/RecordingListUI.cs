@@ -174,7 +174,7 @@ namespace PerseusXR.UI
             if (statusText != null)
             {
                 statusText.text = $"{operation}: {progress:P0}";
-                statusText.color = Color.yellow; // Use a different color for in-progress? Or just white/green.
+                statusText.color = new Color(1f, 0.55f, 0f, 1f); // PerseusXR Amber for in-progress
                 
                 if (statusHideCoroutine != null)
                 {
@@ -189,7 +189,8 @@ namespace PerseusXR.UI
             if (statusText != null)
             {
                 statusText.text = message;
-                statusText.color = isSuccess ? Color.green : Color.red;
+                // PerseusXR Silver for Success, Amber for Failure
+                statusText.color = isSuccess ? Color.white : new Color(1f, 0.55f, 0f, 1f);
 
                 if (statusHideCoroutine != null)
                 {
