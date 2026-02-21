@@ -60,6 +60,9 @@ namespace PerseusXR.UI
         /// </summary>
         public void ToggleMenu()
         {
+            // PerseusXR Spatial UX: Inject physical weight into the UI interaction.
+            PlayMicroClickHaptic();
+
             isMenuVisible = !isMenuVisible;
             
             if (menuPanel != null)
@@ -125,6 +128,19 @@ namespace PerseusXR.UI
             {
                 ToggleMenu();
             }
+        }
+
+        // --- PerseusXR Haptic Architecture ---
+        private void PlayMicroClickHaptic()
+        {
+            // Meta OS Standard: High frequency, critically low amplitude for premium feel (Click, not a buzz)
+            OVRInput.SetControllerVibration(1.0f, 0.2f, OVRInput.Controller.RTouch);
+            Invoke(nameof(StopHaptic), 0.05f); // 50ms pulse
+        }
+
+        private void StopHaptic()
+        {
+            OVRInput.SetControllerVibration(0f, 0f, OVRInput.Controller.RTouch);
         }
 
         private void OnValidate()

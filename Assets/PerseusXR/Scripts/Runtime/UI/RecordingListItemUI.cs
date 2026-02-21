@@ -46,10 +46,21 @@ namespace PerseusXR.UI
         private void Awake()
         {
             if (deleteButton != null)
-                deleteButton.onClick.AddListener(() => OnDeleteClicked?.Invoke(recordingDirectoryName));
+                deleteButton.onClick.AddListener(() => { PlayMicroClick(); OnDeleteClicked?.Invoke(recordingDirectoryName); });
 
             if (exportButton != null)
-                exportButton.onClick.AddListener(() => OnExportClicked?.Invoke(recordingDirectoryName));
+                exportButton.onClick.AddListener(() => { PlayMicroClick(); OnExportClicked?.Invoke(recordingDirectoryName); });
+        }
+
+        private void PlayMicroClick()
+        {
+            OVRInput.SetControllerVibration(1.0f, 0.2f, OVRInput.Controller.RTouch);
+            Invoke(nameof(StopVibration), 0.05f);
+        }
+
+        private void StopVibration()
+        {
+            OVRInput.SetControllerVibration(0f, 0f, OVRInput.Controller.RTouch);
         }
 
         /// <summary>
@@ -61,13 +72,22 @@ namespace PerseusXR.UI
             recordingDirectoryName = info.DirectoryName;
 
             if (directoryNameText != null)
+            {
                 directoryNameText.text = info.DirectoryName;
+                directoryNameText.color = Color.white; // PerseusXR Cinematic Silver
+            }
 
             if (dateText != null)
+            {
                 dateText.text = info.FormattedDate;
+                dateText.color = Color.white;
+            }
 
             if (sizeText != null)
+            {
                 sizeText.text = info.FormattedSize;
+                sizeText.color = Color.white;
+            }
         }
 
         /// <summary>

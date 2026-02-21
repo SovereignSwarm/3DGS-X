@@ -25,11 +25,11 @@ namespace PerseusXR.Depth
         [SerializeField] private float minRaycastDistance = 0.25f;
         [SerializeField] private float raycastDistance = 10f;
         [SerializeField] private bool showDebugLines = true;
-        [SerializeField] private CaptureTimer captureTimer;
-        [SerializeField] private EnvironmentRaycastManager environmentRaycastManager;
-        [SerializeField] private Transform trackingSpace;
-        [SerializeField] private Camera camera;
-        [SerializeField] private ParticleSystem pointCloudParticleSystem;
+        [SerializeField] private CaptureTimer captureTimer = default!;
+        [SerializeField] private EnvironmentRaycastManager environmentRaycastManager = default!;
+        [SerializeField] private Transform trackingSpace = default!;
+        [SerializeField] private Camera mainCamera = default!;
+        [SerializeField] private ParticleSystem pointCloudParticleSystem = default!;
 
         private int hitCount = 0;
         private int totalRaycastCount = 0;
@@ -67,7 +67,7 @@ namespace PerseusXR.Depth
             if (!showDebugLines || environmentRaycastManager == null || !captureTimer.IsCapturing || !captureTimer.ShouldCaptureThisFrame) return;
 
             // Cast grid of rays from the camera
-            if (camera == null)
+            if (mainCamera == null)
             {
                 Debug.LogWarning($"[{Constants.LOG_TAG}] DepthPointCloudRenderer - No camera found!");
                 return;
@@ -88,7 +88,7 @@ namespace PerseusXR.Depth
                     float v = (y + 0.5f) / gridHeight;
                     
                     // Convert to world space ray
-                    Ray ray = camera.ViewportPointToRay(new Vector3(u, v, 0f));
+                    Ray ray = mainCamera.ViewportPointToRay(new Vector3(u, v, 0f));
 
                     totalRaycastCount++;
                     
@@ -96,7 +96,7 @@ namespace PerseusXR.Depth
                     // TODO: Since we already have the depth buffer, we could use it directly instead of raycasting
                     if (environmentRaycastManager.Raycast(ray, out EnvironmentRaycastHit hit, raycastDistance))
                     {
-                        float distance = Vector3.Distance(camera.transform.position, hit.point);
+                        float distance = Vector3.Distance(mainCamera.transform.position, hit.point);
                         
                         // Filter out hits that are too close (likely invalid depth or near plane)
                         if (distance < minRaycastDistance)
@@ -109,9 +109,9 @@ namespace PerseusXR.Depth
                         if (showDebugLines && x == gridWidth / 2 && y == gridHeight / 2)
                         {
                             Debug.Log($"[{Constants.LOG_TAG}] Depth Hit - Dist: {distance:F2}m, Pos: {hit.point}");
-                            Debug.Log($"[{Constants.LOG_TAG}] Camera Pos: {camera.transform.position}");
+                            Debug.Log($"[{Constants.LOG_TAG}] Camera Pos: {mainCamera.transform.position}");
                         }
-                        Color pointColor = GetColorFromSurfaceNormal(hit.point, camera.transform.position, hit.normal);
+                        Color pointColor = GetColorFromSurfaceNormal(hit.point, mainCamera.transform.position, hit.normal);
                         
                         // Emit particle
                         var emitParams = new ParticleSystem.EmitParams();

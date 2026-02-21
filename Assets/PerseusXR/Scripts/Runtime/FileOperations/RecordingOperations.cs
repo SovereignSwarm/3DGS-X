@@ -248,11 +248,6 @@ namespace PerseusXR.FileOperations
                     File.Delete(zipPath);
                 }
 
-                bool success = false;
-                string message = "";
-
-                Exception? threadException = null;
-
                 // Shared state for progress reporting
                 // We use a class or closure to share state safely
                 var progressState = new ProgressState();

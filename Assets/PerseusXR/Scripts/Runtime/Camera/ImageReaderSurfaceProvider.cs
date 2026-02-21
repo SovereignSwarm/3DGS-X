@@ -18,7 +18,6 @@ namespace PerseusXR.Camera
 
         [SerializeField] private string dataDirectoryName = string.Empty;
         [SerializeField] private string imageSubdirName = "left_camera";
-        [SerializeField] private string cameraMetaDataFileName = "left_camera_characteristics.json";
         [SerializeField] private string formatInfoFileName = "left_camera_image_format.json";
         [SerializeField] private int bufferPoolSize = 5;
         [Header("Synchronized Capture")]
@@ -85,17 +84,18 @@ namespace PerseusXR.Camera
         /// Must be called before starting capture to ensure files are written to the correct location.
         /// Controller injects exact strings to avoid Unity component hardcoding.
         /// </summary>
-        public void UpdateDirectoryPaths(string sessionBasePath, string eyeDirectoryName, string formatFileName)
+        public void UpdateDirectoryPaths()
         {
             if (currentInstance != null)
             {
-                var imageFileDirPath = Path.Join(sessionBasePath, eyeDirectoryName);
-                var formatInfoFilePath = Path.Join(sessionBasePath, formatFileName);
+                var basePath = string.IsNullOrEmpty(BaseSessionPath) ? Application.persistentDataPath : BaseSessionPath;
+                var dataDirPath = Path.Join(basePath, dataDirectoryName);
+
+                var imageFileDirPath = Path.Join(dataDirPath, imageSubdirName);
+                var formatInfoFilePath = Path.Join(dataDirPath, formatInfoFileName);
                 
                 currentInstance.Call(UPDATE_DIRECTORY_PATHS_METHOD_NAME, imageFileDirPath, formatInfoFilePath);
-                Debug.Log($"[ImageReaderSurfaceProvider] Updated directory paths for session: {sessionBasePath}");
-                
-                // NOT WRITING METADATA HERE ANYMORE. Handled by RecordingOperations centrally.
+                Debug.Log($"[ImageReaderSurfaceProvider] Updated directory paths for session: {dataDirPath}");
             }
         }
 

@@ -30,6 +30,13 @@ namespace PerseusXR.UI
 
         private float lastUpdateTime = 0f;
 
+        private void Start()
+        {
+            // PerseusXR Brand Enforcement: Explicitly define UI colors to prevent Unity Default Inspector overrides if prefabs break.
+            if (recordingIcon != null) recordingIcon.color = new Color(1f, 0.55f, 0f, 1f); // Virtual Production Amber
+            if (timerText != null) timerText.color = Color.white; // Cinematic Silver
+        }
+
         private void Update()
         {
             if (recordingManager == null)

@@ -71,22 +71,23 @@ namespace PerseusXR.UI
                 case CapturePass.Geometry:
                     currentPass = CapturePass.TextureDetail;
                     Debug.Log($"[GuidedCapture] Advanced to Pass 2: {currentPass} - Capturing close-up details.");
-                    // Provide a satisfying controller rumble to signal the shift
-                    OVRInput.SetControllerVibration(1.0f, 0.5f, OVRInput.Controller.RTouch);
-                    Invoke(nameof(StopVibration), 0.2f);
+                    // PerseusXR Micro-click
+                    OVRInput.SetControllerVibration(1.0f, 0.2f, OVRInput.Controller.RTouch);
+                    Invoke(nameof(StopVibration), 0.05f);
                     break;
                 case CapturePass.TextureDetail:
                     currentPass = CapturePass.ViewDependent;
                     Debug.Log($"[GuidedCapture] Advanced to Pass 3: {currentPass} - Orbiting for specular highlights.");
-                    OVRInput.SetControllerVibration(1.0f, 0.5f, OVRInput.Controller.RTouch);
-                    Invoke(nameof(StopVibration), 0.2f);
+                    // PerseusXR Micro-click
+                    OVRInput.SetControllerVibration(1.0f, 0.2f, OVRInput.Controller.RTouch);
+                    Invoke(nameof(StopVibration), 0.05f);
                     break;
                 case CapturePass.ViewDependent:
                     currentPass = CapturePass.Complete;
                     Debug.Log($"[GuidedCapture] All passes complete! The user should ideally stop recording now.");
-                    // Double pulse to signal completion
-                    OVRInput.SetControllerVibration(1.0f, 1.0f, OVRInput.Controller.RTouch);
-                    Invoke(nameof(StopVibration), 0.5f);
+                    // PerseusXR Distinct Completion Click
+                    OVRInput.SetControllerVibration(1.0f, 0.3f, OVRInput.Controller.RTouch);
+                    Invoke(nameof(StopVibration), 0.1f);
                     break;
             }
 

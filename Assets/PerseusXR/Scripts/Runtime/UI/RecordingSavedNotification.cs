@@ -57,6 +57,7 @@ namespace PerseusXR.UI
             if (messageText != null)
             {
                 messageText.text = $"{baseMessage}{directory}";
+                messageText.color = Color.white; // PerseusXR Cinematic Silver
             }
 
             if (notificationPanel != null)

@@ -151,7 +151,7 @@ namespace PerseusXR.IO
                     byte[] pooledBuffer = System.Buffers.ArrayPool<byte>.Shared.Rent(byteLength);
                     
                     // Fast unmanaged copy into pooled managed array
-                    byteSlice.CopyTo(pooledBuffer.AsSpan().Slice(0, byteLength));
+                    NativeArray<byte>.Copy(byteSlice, 0, pooledBuffer, 0, byteLength);
 
                     // Async write
                     using (FileStream fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 4096, useAsync: true))
