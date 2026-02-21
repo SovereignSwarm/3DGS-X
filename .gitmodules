@@ -1,6 +1,6 @@
 [submodule "QuestCameraLib"]
-	path = QuestCameraLib
+	path = PerseusCameraLib
 	url = https://github.com/samuelm2/QuestCameraLib.git
 [submodule "quest-3d-reconstruction"]
-	path = quest-3d-reconstruction
+	path = perseusxr-reconstruction
 	url = https://github.com/samuelm2/quest-3d-reconstruction.git

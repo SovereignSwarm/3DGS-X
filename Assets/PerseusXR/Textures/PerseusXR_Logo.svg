@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <defs>
+    <style>
+      .text-perseus {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 135px;
+        letter-spacing: 12px;
+        fill: #FFFFFF;
+      }
+      .text-xr {
+        font-family: 'Times New Roman', Times, serif;
+        font-size: 105px;
+        letter-spacing: 10px;
+        fill: #FFFFFF;
+      }
+    </style>
+  </defs>
+
+  <!-- Background (Optional, using transparent as it's a logo, but added black for preview) -->
+  <rect width="800" height="800" fill="#000000" rx="40" />
+
+  <!-- Texts -->
+  <text x="410" y="430" class="text-perseus" text-anchor="middle">PERSEUS</text>
+  <text x="410" y="565" class="text-xr" text-anchor="middle">XR</text>
+
+  <!-- Dynamic Lens Arcs designed with tapered strokes using path area -->
+  <!-- Top Left Arc -->
+  <path d="M 140 270 
+           C 220 150, 350 110, 480 120 
+           C 350 130, 240 180, 150 280 
+           Z" 
+        fill="#FFFFFF" />
+
+  <!-- Bottom Right Arc -->
+  <path d="M 680 500 
+           C 620 640, 480 700, 360 690 
+           C 480 680, 590 620, 670 490 
+           Z" 
+        fill="#FFFFFF" />
+        
+</svg>
