@@ -97,6 +97,15 @@ namespace PerseusXR.UI
             OVRInput.SetControllerVibration(0, 0, OVRInput.Controller.RTouch);
         }
 
+        private void OnDestroy()
+        {
+            // Prevent delegate leak if this component is destroyed before RecordingManager
+            if (recordingManager != null)
+            {
+                recordingManager.OnRecordingStarted.RemoveListener(ResetPasses);
+            }
+        }
+
         /// <summary>
         /// Returns the Hyperscape-inspired instruction string for the current pass.
         /// </summary>

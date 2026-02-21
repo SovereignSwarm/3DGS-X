@@ -11,11 +11,23 @@ using PerseusXR.OVR;
 namespace PerseusXR
 {
     /// <summary>
+    /// Formal state machine for recording lifecycle (A-2 fix).
+    /// </summary>
+    public enum RecordingState
+    {
+        Idle,
+        Recording,
+        Finalizing
+    }
+
+    /// <summary>
     /// Central coordinator for all recording subsystems.
     /// Handles proper sequencing and lifecycle management of depth, camera, and pose recording.
     /// </summary>
     public class RecordingManager : MonoBehaviour
     {
+        #region Serialized Fields
+
         [Header("Recording Components")]
         [Tooltip("Manages depth map export")]
         [SerializeField] private DepthMapExporter depthMapExporter = default!;
@@ -39,26 +51,37 @@ namespace PerseusXR
         [Tooltip("Invoked when recording starts.")]
         [SerializeField] private UnityEvent onRecordingStarted = default!;
 
-        private bool isRecording = false;
+        #endregion
+
+        #region State
+
+        private RecordingState state = RecordingState.Idle;
         private float recordingStartTime = 0f;
         private string? currentSessionDirectory = null;
 
-        public bool IsRecording => isRecording;
+        #endregion
+
+        #region Public API
+
+        public bool IsRecording => state == RecordingState.Recording;
+        public RecordingState State => state;
+        public UnityEvent<string> OnRecordingSaved => onRecordingSaved;
+        public UnityEvent OnRecordingStarted => onRecordingStarted;
         
         /// <summary>
         /// Gets the elapsed recording time in seconds.
         /// Returns 0 if not currently recording.
         /// </summary>
-        public float RecordingDuration => isRecording ? Time.time - recordingStartTime : 0f;
+        public float RecordingDuration => IsRecording ? Time.time - recordingStartTime : 0f;
 
         /// <summary>
         /// Starts recording from all subsystems in the proper order.
         /// </summary>
         public void StartRecording()
         {
-            if (isRecording)
+            if (state != RecordingState.Idle)
             {
-                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingManager: Already recording!");
+                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingManager: Cannot start — current state is {state}");
                 return;
             }
 
@@ -113,7 +136,7 @@ namespace PerseusXR
             // This begins the actual frame capture loop
             captureTimer.StartCapture();
 
-            isRecording = true;
+            state = RecordingState.Recording;
             recordingStartTime = Time.time;
 
             onRecordingStarted?.Invoke();
@@ -126,13 +149,14 @@ namespace PerseusXR
         /// </summary>
         public void StopRecording()
         {
-            if (!isRecording)
+            if (state != RecordingState.Recording)
             {
-                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingManager: Not currently recording!");
+                Debug.LogWarning($"[{Constants.LOG_TAG}] RecordingManager: Cannot stop — current state is {state}");
                 return;
             }
 
-            Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Stopping recording session");
+            state = RecordingState.Finalizing;
+            Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Finalizing recording session");
 
             // Stop in reverse order
             // Step 1: Stop capture loop first
@@ -148,15 +172,16 @@ namespace PerseusXR
             // Store directory name before resetting state
             string savedDirectory = currentSessionDirectory ?? string.Empty;
 
-            isRecording = false;
-            recordingStartTime = 0f;
-            currentSessionDirectory = null;
-
-            // Invoke event after files are saved
+            // Fire saved event BEFORE resetting to Idle.
+            // Listeners may check State and need to see Finalizing for cleanup.
             if (!string.IsNullOrEmpty(savedDirectory))
             {
                 onRecordingSaved?.Invoke(savedDirectory);
             }
+
+            state = RecordingState.Idle;
+            recordingStartTime = 0f;
+            currentSessionDirectory = null;
 
             Debug.Log($"[{Constants.LOG_TAG}] RecordingManager: Recording stopped successfully. Files saved to '{savedDirectory}'");
         }
@@ -166,11 +191,15 @@ namespace PerseusXR
         /// </summary>
         public void ToggleRecording()
         {
-            if (isRecording)
+            if (IsRecording)
                 StopRecording();
             else
                 StartRecording();
         }
+
+        #endregion
+
+        #region Lifecycle
 
         private void OnValidate()
         {
@@ -191,9 +220,11 @@ namespace PerseusXR
         private void OnDestroy()
         {
             // Safety: ensure recording stops on cleanup
-            if (isRecording)
+            if (IsRecording)
                 StopRecording();
         }
+
+        #endregion
     }
 }
 

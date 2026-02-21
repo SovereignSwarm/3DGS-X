@@ -16,6 +16,7 @@ namespace PerseusXR.IO
         private readonly int kernel;
 
         private readonly Queue<GraphicsBuffer> bufferPool = new();
+        private const int MAX_POOL_SIZE = 8; // Cap pool to prevent unbounded GPU memory growth
         private bool isDisposed = false;
 
         private readonly object bufferPoolLock = new();
@@ -93,7 +94,7 @@ namespace PerseusXR.IO
         {
             lock (bufferPoolLock)
             {
-                if (isDisposed)
+                if (isDisposed || bufferPool.Count >= MAX_POOL_SIZE)
                 {
                     buffer.Dispose();
                 }
@@ -135,12 +136,11 @@ namespace PerseusXR.IO
 
         private void SaveAsRaw(NativeArray<float> data, string path, Action onComplete)
         {
-            // CRITICAL: Copy NativeArray data to managed array BEFORE Task.Run.
-            // The NativeArray from AsyncGPUReadback is only valid during this callback.
-            // Accessing it on a background thread risks use-after-free / data corruption.
+            // Zero-GC copy: reinterpret float NativeArray as bytes directly
+            // Previous approach used data.ToArray() + Buffer.BlockCopy (2 managed allocations)
             int byteLength = data.Length * sizeof(float);
             byte[] rawBytes = new byte[byteLength];
-            Buffer.BlockCopy(data.ToArray(), 0, rawBytes, 0, byteLength);
+            data.Reinterpret<byte>(sizeof(float)).CopyTo(rawBytes);
 
             Task.Run(() =>
             {

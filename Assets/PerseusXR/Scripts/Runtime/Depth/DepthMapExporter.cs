@@ -39,10 +39,14 @@ namespace PerseusXR.Depth
         private CsvWriter? rightDepthCsvWriter;
 
         private double baseOvrTimeSec;
+        private long baseOvrTimeNs; // nanosecond base for integer-only conversion (P-8 fix)
         private long baseUnixTimeMs;
 
         private bool hasScenePermission = false;
         private bool depthSystemReady = false;
+
+        // Pre-allocated to avoid GC in OnBeforeRender hot path (P-3 fix)
+        private readonly double[] reusableRow = new double[17];
 
         public bool IsDepthSystemReady => depthSystemReady;
 
@@ -60,6 +64,7 @@ namespace PerseusXR.Depth
             // Reset base times when starting a new recording session
             // This ensures timestamps align with camera/pose data
             baseOvrTimeSec = OVRPlugin.GetTimeInSeconds();
+            baseOvrTimeNs = (long)(baseOvrTimeSec * 1.0e9);
             baseUnixTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             
             Debug.Log($"[{Constants.LOG_TAG}] DepthMapExporter - Reset base times: OVR={baseOvrTimeSec:F3}s, Unix={baseUnixTimeMs}ms");
@@ -87,6 +92,7 @@ namespace PerseusXR.Depth
         private void Start()
         {
             baseOvrTimeSec = OVRPlugin.GetTimeInSeconds();
+            baseOvrTimeNs = (long)(baseOvrTimeSec * 1.0e9);
             baseUnixTimeMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             depthDataExtractor = new();
@@ -208,25 +214,32 @@ namespace PerseusXR.Depth
                     var timestampMs = ConvertTimestampNsToUnixTimeMs(frameDesc.timestampNs);
                     var ovrTimestamp = frameDesc.timestampNs / 1.0e9;
 
-                    var row = new double[]
-                    {
-                        timestampMs,
-                        ovrTimestamp,
-                        frameDesc.createPoseLocation.x, frameDesc.createPoseLocation.y, frameDesc.createPoseLocation.z,
-                        frameDesc.createPoseRotation.x, frameDesc.createPoseRotation.y, frameDesc.createPoseRotation.z, frameDesc.createPoseRotation.w,
-                        frameDesc.fovLeftAngleTangent, frameDesc.fovRightAngleTangent,
-                        frameDesc.fovTopAngleTangent, frameDesc.fovDownAngleTangent,
-                        frameDesc.nearZ, frameDesc.farZ,
-                        width, height
-                    };
+                    // Reuse pre-allocated array to avoid GC in OnBeforeRender
+                    reusableRow[0] = timestampMs;
+                    reusableRow[1] = ovrTimestamp;
+                    reusableRow[2] = frameDesc.createPoseLocation.x;
+                    reusableRow[3] = frameDesc.createPoseLocation.y;
+                    reusableRow[4] = frameDesc.createPoseLocation.z;
+                    reusableRow[5] = frameDesc.createPoseRotation.x;
+                    reusableRow[6] = frameDesc.createPoseRotation.y;
+                    reusableRow[7] = frameDesc.createPoseRotation.z;
+                    reusableRow[8] = frameDesc.createPoseRotation.w;
+                    reusableRow[9] = frameDesc.fovLeftAngleTangent;
+                    reusableRow[10] = frameDesc.fovRightAngleTangent;
+                    reusableRow[11] = frameDesc.fovTopAngleTangent;
+                    reusableRow[12] = frameDesc.fovDownAngleTangent;
+                    reusableRow[13] = frameDesc.nearZ;
+                    reusableRow[14] = frameDesc.farZ;
+                    reusableRow[15] = width;
+                    reusableRow[16] = height;
 
                     if (i == 0)
                     {
-                        leftDepthCsvWriter?.EnqueueRow(row);
+                        leftDepthCsvWriter?.EnqueueRow(reusableRow);
                     }
                     else
                     {
-                        rightDepthCsvWriter?.EnqueueRow(row);
+                        rightDepthCsvWriter?.EnqueueRow(reusableRow);
                     }
                 }
             } else {
@@ -236,7 +249,9 @@ namespace PerseusXR.Depth
 
         private long ConvertTimestampNsToUnixTimeMs(long timestampNs)
         {
-            var deltaMs = (long) (timestampNs / 1.0e6 - baseOvrTimeSec * 1000.0);
+            // Integer-only arithmetic to avoid floating-point precision loss after 4.6+ hours
+            var deltaNs = timestampNs - baseOvrTimeNs;
+            var deltaMs = deltaNs / 1_000_000;
             return baseUnixTimeMs + deltaMs;
         }
 
