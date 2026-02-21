@@ -29,6 +29,14 @@ namespace PerseusXR.FileOperations
         {
             try
             {
+                // Sanitize directory name to prevent path traversal (e.g., "../../")
+                directoryName = Path.GetFileName(directoryName);
+                if (string.IsNullOrEmpty(directoryName))
+                {
+                    OnOperationComplete?.Invoke("Delete", false, "Invalid directory name");
+                    return;
+                }
+
                 string fullPath = Path.Join(Application.persistentDataPath, directoryName);
                 
                 if (!Directory.Exists(fullPath))
@@ -92,6 +100,14 @@ namespace PerseusXR.FileOperations
         {
             try
             {
+                // Sanitize directory name to prevent path traversal
+                directoryName = Path.GetFileName(directoryName);
+                if (string.IsNullOrEmpty(directoryName))
+                {
+                    OnOperationComplete?.Invoke("MoveToDownloads", false, "Invalid directory name");
+                    return;
+                }
+
                 string sourcePath = Path.Join(Application.persistentDataPath, directoryName);
                 string destPath = Path.Join(downloadsBasePath, directoryName);
 
@@ -186,6 +202,15 @@ namespace PerseusXR.FileOperations
         private System.Collections.IEnumerator CompressCoroutine(string directoryName, bool isExport)
         {
             string operationName = isExport ? "Export" : "Compress";
+
+            // Sanitize directory name to prevent path traversal
+            directoryName = Path.GetFileName(directoryName);
+            if (string.IsNullOrEmpty(directoryName))
+            {
+                OnOperationComplete?.Invoke(operationName, false, "Invalid directory name");
+                yield break;
+            }
+
             string sourcePath = Path.Join(Application.persistentDataPath, directoryName);
             string zipName = $"{directoryName}.zip";
             string zipPath = Path.Join(Application.persistentDataPath, zipName);

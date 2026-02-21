@@ -2,6 +2,8 @@ import os
 import sys
 import argparse
 import subprocess
+import tempfile
+import yaml
 from pathlib import Path
 import shutil
 
@@ -37,38 +39,38 @@ def main():
     print(f"=== PerseusXR Post-Capture processing initiated for: {input_path.name} ===")
     print("-> Forcing 3D Gaussian Splatting optimum features (CLAHE Tone Mapping enabled).")
     
-    # We will temporarily edit the pipeline_config.yml in the perseusxr-reconstruction to ensure tone mapping is enabled
+    # Enforce CLAHE tone mapping in pipeline config using proper YAML parsing.
+    # Previous implementation used string splitting which broke on colon-containing values.
     config_path = q3r_dir / "config" / "pipeline_config.yml"
     
     try:
         if config_path.exists():
+            # Create backup before modifying tracked submodule file
+            backup_path = config_path.with_suffix('.yml.bak')
+            shutil.copy2(config_path, backup_path)
+
             with open(config_path, "r") as f:
-                config_lines = f.readlines()
-                
-            modified_lines = []
-            in_yuv = False
-            for line in config_lines:
-                if "yuv_to_rgb:" in line:
-                    in_yuv = True
-                    modified_lines.append(line)
-                elif in_yuv and "tone_mapping:" in line:
-                    line = line.split(":")[0] + ": true\n"
-                    modified_lines.append(line)
-                elif in_yuv and "tone_mapping_method:" in line:
-                    line = line.split(":")[0] + ": \"clahe\"\n"
-                    modified_lines.append(line)
-                elif in_yuv and "clahe_clip_limit:" in line:
-                    line = line.split(":")[0] + ": 2.0\n"
-                    modified_lines.append(line)
-                elif line.strip() and not line.startswith(" "):
-                    if in_yuv and "yuv_to_rgb" not in line:
-                        in_yuv = False
-                    modified_lines.append(line)
-                else:
-                    modified_lines.append(line)
-                    
-            with open(config_path, "w") as f:
-                f.writelines(modified_lines)
+                config = yaml.safe_load(f)
+
+            # Safely update yuv_to_rgb section
+            if "yuv_to_rgb" not in config:
+                config["yuv_to_rgb"] = {}
+
+            config["yuv_to_rgb"]["tone_mapping"] = True
+            config["yuv_to_rgb"]["tone_mapping_method"] = "clahe"
+            config["yuv_to_rgb"]["clahe_clip_limit"] = 2.0
+
+            # Atomic write via temp file to prevent TOCTOU corruption
+            tmp_fd, tmp_path = tempfile.mkstemp(
+                dir=config_path.parent, suffix='.yml.tmp'
+            )
+            try:
+                with os.fdopen(tmp_fd, 'w') as f:
+                    yaml.dump(config, f, default_flow_style=False, sort_keys=False)
+                os.replace(tmp_path, str(config_path))
+            except Exception:
+                os.unlink(tmp_path)
+                raise
     except Exception as e:
         print(f"[Warning] Failed to enforce CLAHE Tone mapping configs: {e}")
 

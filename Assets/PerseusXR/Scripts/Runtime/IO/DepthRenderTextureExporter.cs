@@ -135,13 +135,17 @@ namespace PerseusXR.IO
 
         private void SaveAsRaw(NativeArray<float> data, string path, Action onComplete)
         {
+            // CRITICAL: Copy NativeArray data to managed array BEFORE Task.Run.
+            // The NativeArray from AsyncGPUReadback is only valid during this callback.
+            // Accessing it on a background thread risks use-after-free / data corruption.
+            int byteLength = data.Length * sizeof(float);
+            byte[] rawBytes = new byte[byteLength];
+            Buffer.BlockCopy(data.ToArray(), 0, rawBytes, 0, byteLength);
+
             Task.Run(() =>
             {
                 try
                 {
-                    int byteLength = data.Length * sizeof(float);
-                    byte[] rawBytes = new byte[byteLength];
-                    Buffer.BlockCopy(data.ToArray(), 0, rawBytes, 0, byteLength);
                     File.WriteAllBytes(path, rawBytes);
                 }
                 catch (Exception ex)

@@ -30,6 +30,8 @@ namespace PerseusXR.OVR
         [SerializeField] private bool startLoggingOnStart = false;
         [Header("Optional")]
         [SerializeField] private Transform trackingSpace = default!;
+        [Tooltip("Gate pose logging to only fire when CaptureTimer signals a capture frame")]
+        [SerializeField] private CaptureTimer? captureTimer = default;
 
         private CsvWriter? writer = null;
 
@@ -98,6 +100,11 @@ namespace PerseusXR.OVR
         private void FixedUpdate()
         {
             if (writer == null)
+                return;
+
+            // If a CaptureTimer is assigned, only log when the timer signals capture.
+            // This matches depth/camera behavior and prevents 50Hz ungated logging.
+            if (captureTimer != null && (!captureTimer.IsCapturing || !captureTimer.ShouldCaptureThisFrame))
                 return;
 
             EnqueueRowIfNeeded(writer);

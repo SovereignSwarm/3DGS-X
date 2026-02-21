@@ -99,13 +99,15 @@ namespace PerseusXR
                 logger.StartLogging();
             }
             
-            // Optional: Reset camera base time to sync with depth timestamps
-            // Currently commented out as both use system monotonic clock
-            // Uncomment if timestamp alignment issues occur
-            // foreach (var provider in cameraProviders)
-            // {
-            //     provider.ResetBaseTime();
-            // }
+            // Reset camera base time to sync with depth/pose timestamps.
+            // Camera's Kotlin layer sets baseMonoTimeNs at construction (app start),
+            // while depth and pose reset theirs here at session start.
+            // Without this reset, camera timestamps drift by app-open duration,
+            // causing PoseInterpolator to drop all frames (30ms window exceeded).
+            foreach (var provider in cameraProviders)
+            {
+                provider.ResetBaseTime();
+            }
 
             // Step 3: Start synchronized capture
             // This begins the actual frame capture loop

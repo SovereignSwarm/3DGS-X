@@ -42,14 +42,13 @@ namespace PerseusXR.Depth
             depthFrameDescs = new DepthFrameDesc[2]; // left, right
 
             var loader = XRGeneralSettings.Instance.Manager.activeLoader;
-            var displaySubsystem = loader.GetLoadedSubsystem<XRDisplaySubsystem>();
 
             if (loader is not OpenXRLoader)
             {
                 return;
             }
 
-            this.displaySubsystem = displaySubsystem;
+            this.displaySubsystem = loader.GetLoadedSubsystem<XRDisplaySubsystem>();
             occlusionSubsystem = loader.GetLoadedSubsystem<XROcclusionSubsystem>();
 
             if (occlusionSubsystem == null)

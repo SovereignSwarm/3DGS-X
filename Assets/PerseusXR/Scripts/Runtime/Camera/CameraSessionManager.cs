@@ -19,6 +19,10 @@ namespace PerseusXR.Camera
         [SerializeField] private List<SurfaceProviderBase> surfaceProviders = new();
         [SerializeField] private CameraPosition cameraPosition = CameraPosition.Left;
         [SerializeField] private CameraUseCase useCase = CameraUseCase.STILL_CAPTURE;
+        
+        [Header("Recording Safety")]
+        [Tooltip("If assigned, prevents camera session destruction during active recording to avoid timestamp discontinuity")]
+        [SerializeField] private RecordingManager? recordingManager = default;
 
         public AndroidJavaObject? SessionManagerJavaInstance { get; private set; }
         
@@ -51,7 +55,7 @@ namespace PerseusXR.Camera
         {
             if (pauseStatus)
             {
-                // App is going to background/sleep - close camera to release resources
+                // App is going to background/sleep
                 // Cancel any pending resume operations
                 if (resumeCoroutine != null)
                 {
@@ -59,12 +63,20 @@ namespace PerseusXR.Camera
                     resumeCoroutine = null;
                 }
                 
+                // Do NOT destroy camera mid-recording — this would reset Kotlin base time
+                // and create a timestamp discontinuity that corrupts pose interpolation
+                if (recordingManager != null && recordingManager.IsRecording)
+                {
+                    Debug.LogWarning($"[{Constants.LOG_TAG}] App pausing during recording — keeping camera session alive to prevent timestamp discontinuity");
+                    return;
+                }
+                
                 Debug.Log($"[{Constants.LOG_TAG}] App pausing - closing camera session");
                 DestroyInstance();
             }
             else
             {
-                // App is resuming - delay camera reopening to avoid rapid pause/resume cycles
+                // App is resuming — delay camera reopening to avoid rapid pause/resume cycles
                 // This is common during VR app startup
                 if (resumeCoroutine != null)
                 {

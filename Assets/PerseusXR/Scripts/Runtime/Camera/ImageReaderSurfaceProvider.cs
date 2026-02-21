@@ -120,7 +120,9 @@ namespace PerseusXR.Camera
             // This ensures camera and depth are triggered at the exact same Unity frame
             if (captureTimer.IsCapturing && captureTimer.ShouldCaptureThisFrame)
             {
+#if UNITY_EDITOR
                 Debug.Log($"[ImageReader] Signaling camera capture at Unity time={Time.unscaledTime:F3}s");
+#endif
                 currentInstance.Call(CAPTURE_NEXT_FRAME_METHOD_NAME);
             }
         }

@@ -84,7 +84,9 @@ namespace PerseusXR.Common
                 {
                     shouldCaptureThisFrame = true;
                     lastCaptureTime = currentTime;
+#if UNITY_EDITOR
                     Debug.Log($"[CaptureTimer] Capture signal at time={currentTime:F3}s (interval={captureInterval:F3}s)");
+#endif
                 }
                 else
                 {
