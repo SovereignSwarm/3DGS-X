@@ -73,3 +73,60 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+.agent/desktop.ini
+.agent/rules/desktop.ini
+.agent/skills/desktop.ini
+.agent/skills/prep_quest_session/desktop.ini
+.agent/skills/prep_quest_session/scripts/desktop.ini
+.agent/workflows/desktop.ini
+.vscode/desktop.ini
+Assets/CompositionLayers/desktop.ini
+Assets/CompositionLayers/UserSettings/desktop.ini
+Assets/CompositionLayers/UserSettings/Resources/desktop.ini
+Assets/desktop.ini
+Assets/InteractionSDK/desktop.ini
+Assets/MetaXR/desktop.ini
+Assets/Oculus/desktop.ini
+Assets/PerseusXR/ComputeShaders/desktop.ini
+Assets/PerseusXR/desktop.ini
+Assets/PerseusXR/Materials/desktop.ini
+Assets/PerseusXR/Scenes/desktop.ini
+Assets/PerseusXR/Scripts/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/Camera/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/Common/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/Depth/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/FileOperations/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/IO/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/OVR/desktop.ini
+Assets/PerseusXR/Scripts/Runtime/UI/desktop.ini
+Assets/PerseusXR/Shaders/desktop.ini
+Assets/PerseusXR/Textures/desktop.ini
+Assets/Plugins/Android/desktop.ini
+Assets/Plugins/desktop.ini
+Assets/Resources/desktop.ini
+Assets/Settings/desktop.ini
+Assets/TextMesh Pro/desktop.ini
+Assets/TextMesh Pro/Fonts/desktop.ini
+Assets/TextMesh Pro/Resources/desktop.ini
+Assets/TextMesh Pro/Resources/Fonts & Materials/desktop.ini
+Assets/TextMesh Pro/Resources/Sprite Assets/desktop.ini
+Assets/TextMesh Pro/Resources/Style Sheets/desktop.ini
+Assets/TextMesh Pro/Shaders/desktop.ini
+Assets/TextMesh Pro/Sprites/desktop.ini
+Assets/TutorialInfo/desktop.ini
+Assets/TutorialInfo/Icons/desktop.ini
+Assets/TutorialInfo/Scripts/desktop.ini
+Assets/TutorialInfo/Scripts/Editor/desktop.ini
+Assets/XR/desktop.ini
+Assets/XR/Loaders/desktop.ini
+Assets/XR/Resources/desktop.ini
+Assets/XR/Settings/desktop.ini
+Assets/XR/UserSimulationSettings/desktop.ini
+Assets/XR/UserSimulationSettings/Resources/desktop.ini
+desktop.ini
+docs/desktop.ini
+Packages/desktop.ini
+ProjectSettings/desktop.ini
+tests/__pycache__/desktop.ini
+tests/desktop.ini
